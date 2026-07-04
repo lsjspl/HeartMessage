@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "heart-message-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENVIRONMENT": "local",
+    "AUTH_TOKEN_SECRET": "local-dev-secret-change-before-production"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "heart-message-db",
+      "database_id": "replace-with-cloudflare-d1-id",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CONFIG_KV",
+      "id": "replace-with-config-kv-id"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "heart-message-media"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "AI_QUEUE",
+        "queue": "heart-message-ai"
+      },
+      {
+        "binding": "LOG_QUEUE",
+        "queue": "heart-message-logs"
+      }
+    ]
+  }
+}

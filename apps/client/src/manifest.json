@@ -1,0 +1,22 @@
+{
+  "name": "HeartMessage",
+  "appid": "__UNI__HEARTMESSAGE",
+  "description": "漂流瓶社交程序",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "h5": {
+    "router": {
+      "mode": "history",
+      "base": "/"
+    },
+    "title": "HeartMessage"
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": true
+    },
+    "usingComponents": true
+  }
+}

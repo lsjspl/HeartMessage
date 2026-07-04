@@ -1,0 +1,7 @@
+interface:
+  display_name: "HeartMessage 约束"
+  short_description: "HeartMessage 项目开发硬约束"
+  default_prompt: "Use $heartmessage-constraints to enforce HeartMessage project constraints before making changes."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,2051 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HeartMessage 漂流瓶社交程序设计稿</title>
+    <style>
+      :root {
+        --ink: #14213d;
+        --muted: #65758b;
+        --line: #d9e4e7;
+        --paper: #fbfcf8;
+        --surface: #ffffff;
+        --sea: #0f8f8c;
+        --sea-dark: #075c66;
+        --sea-soft: #d8f1ee;
+        --coral: #ff8066;
+        --sun: #ffd166;
+        --mint: #71d6b4;
+        --lavender: #a18cd1;
+        --danger: #e5525c;
+        --shadow: 0 20px 50px rgba(20, 33, 61, 0.12);
+        --shadow-soft: 0 10px 30px rgba(20, 33, 61, 0.08);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(180deg, #ecf9f7 0%, #f8f1e9 54%, #f8fafc 100%);
+        letter-spacing: 0;
+      }
+
+      .page {
+        width: min(1800px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 36px 0 56px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) 520px;
+        gap: 28px;
+        align-items: stretch;
+        margin-bottom: 28px;
+      }
+
+      .hero-main,
+      .summary-panel,
+      .section,
+      .desktop-frame,
+      .phone {
+        box-shadow: var(--shadow-soft);
+      }
+
+      .hero-main {
+        min-height: 360px;
+        padding: 36px;
+        background:
+          linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.74)),
+          radial-gradient(circle at 80% 16%, rgba(255, 209, 102, 0.35), transparent 24%),
+          linear-gradient(135deg, #d8f1ee, #fff6df 52%, #ffe5dc);
+        border: 1px solid rgba(255, 255, 255, 0.86);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .hero-main::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0;
+        height: 130px;
+        background:
+          radial-gradient(90px 22px at 12% 64%, rgba(15, 143, 140, 0.35), transparent 70%),
+          radial-gradient(120px 26px at 44% 48%, rgba(15, 143, 140, 0.28), transparent 70%),
+          radial-gradient(140px 30px at 72% 60%, rgba(255, 128, 102, 0.2), transparent 70%),
+          linear-gradient(180deg, rgba(216, 241, 238, 0), rgba(15, 143, 140, 0.22));
+        pointer-events: none;
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: var(--sea-dark);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      h1 {
+        width: min(760px, 100%);
+        margin: 0;
+        color: #10213c;
+        font-size: 42px;
+        line-height: 1.15;
+        font-weight: 800;
+      }
+
+      .hero-copy {
+        width: min(760px, 100%);
+        margin: 18px 0 28px;
+        color: #405265;
+        font-size: 16px;
+        line-height: 1.8;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        height: 34px;
+        padding: 0 12px;
+        color: var(--sea-dark);
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(15, 143, 140, 0.16);
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .summary-panel {
+        padding: 26px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.86);
+        border-radius: 8px;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+
+      .metric {
+        min-height: 96px;
+        padding: 16px;
+        background: #f7fbf9;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 30px;
+        line-height: 1;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .page-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .page-list li {
+        min-height: 38px;
+        padding: 9px 11px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: #2a3a4c;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .section {
+        margin-top: 28px;
+        padding: 28px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 24px;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .section-title p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 6px 10px;
+        color: #384153;
+        background: #f6f7fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .phone-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(260px, 1fr));
+        gap: 22px;
+        align-items: start;
+      }
+
+      .phone-wrap {
+        display: grid;
+        gap: 10px;
+      }
+
+      .screen-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 36px;
+      }
+
+      .screen-label strong {
+        font-size: 15px;
+      }
+
+      .screen-label span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .phone {
+        width: 100%;
+        max-width: 312px;
+        height: 648px;
+        margin: 0 auto;
+        padding: 12px;
+        background: #111827;
+        border-radius: 28px;
+        overflow: hidden;
+      }
+
+      .phone-screen {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        border-radius: 20px;
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 34px;
+        padding: 0 18px;
+        color: #243043;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .status-icons {
+        display: flex;
+        gap: 4px;
+      }
+
+      .dot {
+        width: 5px;
+        height: 5px;
+        background: currentColor;
+        border-radius: 999px;
+      }
+
+      .mobile-content {
+        height: calc(100% - 34px);
+        padding: 14px 16px 20px;
+        overflow: hidden;
+      }
+
+      .mobile-nav {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        height: 64px;
+        background: rgba(255, 255, 255, 0.96);
+        border-top: 1px solid var(--line);
+      }
+
+      .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #8a96a8;
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .nav-item.active {
+        color: var(--sea);
+      }
+
+      .nav-icon {
+        width: 22px;
+        height: 22px;
+        border: 2px solid currentColor;
+        border-radius: 7px;
+      }
+
+      .top-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .title-block h3 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.1;
+      }
+
+      .title-block p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .avatar,
+      .avatar-sm,
+      .avatar-lg {
+        display: grid;
+        place-items: center;
+        color: white;
+        background: linear-gradient(135deg, var(--sea), var(--lavender));
+        border-radius: 999px;
+        font-weight: 800;
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        font-size: 15px;
+      }
+
+      .avatar-sm {
+        width: 30px;
+        height: 30px;
+        font-size: 11px;
+      }
+
+      .avatar-lg {
+        width: 76px;
+        height: 76px;
+        font-size: 28px;
+      }
+
+      .primary-btn,
+      .secondary-btn,
+      .ghost-btn,
+      .danger-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .primary-btn {
+        color: white;
+        background: var(--sea);
+        box-shadow: 0 10px 20px rgba(15, 143, 140, 0.18);
+      }
+
+      .secondary-btn {
+        color: var(--sea-dark);
+        background: var(--sea-soft);
+      }
+
+      .ghost-btn {
+        color: var(--ink);
+        background: #f4f7f9;
+        border: 1px solid var(--line);
+      }
+
+      .danger-btn {
+        color: white;
+        background: var(--danger);
+      }
+
+      .icon {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid currentColor;
+        border-radius: 5px;
+        flex: 0 0 auto;
+      }
+
+      .login-ocean {
+        position: absolute;
+        inset: auto -30px 0;
+        height: 248px;
+        background:
+          radial-gradient(80px 24px at 16% 28%, rgba(255, 255, 255, 0.55), transparent 70%),
+          radial-gradient(100px 28px at 62% 44%, rgba(255, 255, 255, 0.46), transparent 70%),
+          linear-gradient(180deg, #bfeeea, #0f8f8c);
+      }
+
+      .login-ocean::before {
+        content: "";
+        position: absolute;
+        width: 72px;
+        height: 140px;
+        right: 84px;
+        bottom: 38px;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.12)),
+          #ffc88c;
+        border: 3px solid rgba(117, 73, 43, 0.28);
+        border-radius: 32px 32px 20px 20px;
+        transform: rotate(-15deg);
+      }
+
+      .login-ocean::after {
+        content: "";
+        position: absolute;
+        right: 102px;
+        bottom: 172px;
+        width: 36px;
+        height: 24px;
+        background: #7b4b31;
+        border-radius: 7px 7px 4px 4px;
+        transform: rotate(-15deg);
+      }
+
+      .login-card {
+        position: relative;
+        z-index: 2;
+        margin-top: 26px;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        margin-bottom: 16px;
+        color: white;
+        background: var(--sea);
+        border-radius: 14px;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .login-title {
+        margin: 0 0 10px;
+        font-size: 30px;
+        line-height: 1.08;
+      }
+
+      .login-sub {
+        width: 220px;
+        margin: 0 0 26px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .wechat-btn {
+        width: 100%;
+        color: #fff;
+        background: #13b957;
+      }
+
+      .terms {
+        margin-top: 12px;
+        color: rgba(20, 33, 61, 0.55);
+        font-size: 11px;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .input {
+        display: flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 12px;
+        color: #223049;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .textarea {
+        align-items: flex-start;
+        height: 78px;
+        padding-top: 11px;
+        line-height: 1.5;
+      }
+
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .choice {
+        display: grid;
+        place-items: center;
+        min-height: 38px;
+        color: #536174;
+        background: #f7f9fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .choice.active {
+        color: white;
+        background: var(--sea);
+        border-color: var(--sea);
+      }
+
+      .quota-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .quota {
+        padding: 12px;
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .quota strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .quota span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .sea-stage {
+        position: relative;
+        height: 238px;
+        margin: 4px 0 18px;
+        overflow: hidden;
+        background:
+          radial-gradient(110px 34px at 24% 30%, rgba(255, 255, 255, 0.72), transparent 72%),
+          radial-gradient(120px 34px at 76% 62%, rgba(255, 209, 102, 0.38), transparent 70%),
+          linear-gradient(180deg, #e7fbf8 0%, #85dbcf 48%, #0f8f8c 100%);
+        border-radius: 8px;
+      }
+
+      .floating-bottle {
+        position: absolute;
+        width: 48px;
+        height: 112px;
+        left: 126px;
+        top: 72px;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.16)),
+          #ffbe78;
+        border: 2px solid rgba(104, 70, 44, 0.22);
+        border-radius: 26px 26px 16px 16px;
+        transform: rotate(62deg);
+        box-shadow: 0 16px 24px rgba(7, 92, 102, 0.22);
+      }
+
+      .floating-bottle::before {
+        content: "";
+        position: absolute;
+        top: -20px;
+        left: 13px;
+        width: 22px;
+        height: 24px;
+        background: #755139;
+        border-radius: 7px 7px 4px 4px;
+      }
+
+      .wave {
+        position: absolute;
+        right: -24px;
+        bottom: 28px;
+        left: -24px;
+        height: 54px;
+        background:
+          radial-gradient(54px 18px at 12% 6px, rgba(255, 255, 255, 0.72), transparent 70%),
+          radial-gradient(68px 22px at 42% 14px, rgba(255, 255, 255, 0.55), transparent 70%),
+          radial-gradient(72px 20px at 74% 8px, rgba(255, 255, 255, 0.62), transparent 70%);
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .composer-card {
+        padding: 14px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .composer-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .paper-box {
+        height: 230px;
+        padding: 16px;
+        background:
+          linear-gradient(#fffaf0 29px, #f1e6cd 30px),
+          #fffaf0;
+        background-size: 100% 30px;
+        border: 1px solid #ead9b9;
+        border-radius: 8px;
+        color: #4b5568;
+        font-size: 14px;
+        line-height: 30px;
+      }
+
+      .composer-tools {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 12px 0;
+      }
+
+      .tool-btn {
+        display: grid;
+        place-items: center;
+        min-height: 38px;
+        color: #52657a;
+        background: #f6f8fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .bottle-letter {
+        padding: 16px;
+        background: #fffaf0;
+        border: 1px solid #ecd9bd;
+        border-radius: 8px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+      }
+
+      .letter-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .letter-meta strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .letter-meta span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .letter-copy {
+        margin: 0;
+        color: #3b4558;
+        font-size: 14px;
+        line-height: 1.85;
+      }
+
+      .reply-box {
+        margin-top: 14px;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .reply-box p {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .chat-person {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .chat-person strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .chat-person span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .chat-stream {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 410px;
+        padding: 14px 0;
+        overflow: hidden;
+      }
+
+      .bubble {
+        width: fit-content;
+        max-width: 218px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .bubble.left {
+        color: #283747;
+        background: #ffffff;
+        border: 1px solid var(--line);
+      }
+
+      .bubble.right {
+        align-self: flex-end;
+        color: white;
+        background: var(--sea);
+      }
+
+      .chat-input {
+        position: absolute;
+        right: 14px;
+        bottom: 16px;
+        left: 14px;
+        display: grid;
+        grid-template-columns: 38px 1fr 42px;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .round-tool,
+      .send-tool,
+      .small-tool {
+        display: grid;
+        place-items: center;
+        border: 0;
+      }
+
+      .round-tool {
+        width: 38px;
+        height: 38px;
+        color: var(--sea);
+        background: var(--sea-soft);
+        border-radius: 999px;
+      }
+
+      .send-tool {
+        width: 42px;
+        height: 38px;
+        color: white;
+        background: var(--coral);
+        border-radius: 8px;
+        font-weight: 900;
+      }
+
+      .list-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 4px;
+        margin-bottom: 14px;
+        background: #f2f5f7;
+        border-radius: 8px;
+      }
+
+      .list-tab {
+        display: grid;
+        place-items: center;
+        min-height: 34px;
+        color: #68778a;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .list-tab.active {
+        color: var(--sea-dark);
+        background: white;
+        box-shadow: 0 4px 14px rgba(20, 33, 61, 0.08);
+      }
+
+      .message-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .message-item {
+        display: grid;
+        grid-template-columns: 38px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .message-item strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+
+      .message-item p {
+        max-width: 132px;
+        margin: 0;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .badge {
+        display: grid;
+        place-items: center;
+        min-width: 22px;
+        height: 22px;
+        color: white;
+        background: var(--coral);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .profile-card {
+        padding: 18px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .profile-card .avatar-lg {
+        margin: 0 auto 12px;
+      }
+
+      .profile-card h3 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+
+      .profile-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      .profile-stats div {
+        padding: 10px 4px;
+        background: #f7f9fb;
+        border-radius: 8px;
+      }
+
+      .profile-stats strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      .profile-stats span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .setting-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 44px;
+        padding: 0 12px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .admin-board {
+        display: grid;
+        gap: 28px;
+      }
+
+      .desktop-frame {
+        height: 720px;
+        overflow: hidden;
+        background: #f6f8fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .desktop-inner {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        height: 100%;
+      }
+
+      .sidebar {
+        padding: 22px 16px;
+        color: #d9eef0;
+        background: #12353e;
+      }
+
+      .admin-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 28px;
+        color: white;
+        font-weight: 900;
+      }
+
+      .admin-logo-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        background: var(--coral);
+        border-radius: 8px;
+      }
+
+      .side-nav {
+        display: grid;
+        gap: 6px;
+      }
+
+      .side-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 40px;
+        padding: 0 10px;
+        color: rgba(255, 255, 255, 0.72);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .side-item.active {
+        color: white;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .side-icon {
+        width: 17px;
+        height: 17px;
+        border: 2px solid currentColor;
+        border-radius: 5px;
+      }
+
+      .admin-main {
+        min-width: 0;
+        padding: 22px;
+        overflow: hidden;
+      }
+
+      .admin-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .admin-top h3 {
+        margin: 0 0 5px;
+        font-size: 24px;
+      }
+
+      .admin-top p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .admin-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .admin-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .admin-card {
+        padding: 16px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .admin-card span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .admin-card strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .admin-card em {
+        display: block;
+        margin-top: 9px;
+        color: var(--sea);
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 800;
+      }
+
+      .admin-columns {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 16px;
+      }
+
+      .panel {
+        min-height: 210px;
+        padding: 16px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .panel-head strong {
+        font-size: 15px;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        min-width: 210px;
+        height: 34px;
+        padding: 0 10px;
+        color: var(--muted);
+        background: #f6f8fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 11px 8px;
+        border-bottom: 1px solid #edf1f3;
+        font-size: 12px;
+        text-align: left;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      td {
+        color: #27364b;
+        font-weight: 700;
+      }
+
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .ok {
+        color: #0b7a5b;
+        background: #dff6ed;
+      }
+
+      .warn {
+        color: #996c00;
+        background: #fff0c7;
+      }
+
+      .bad {
+        color: #a9343a;
+        background: #ffe1e5;
+      }
+
+      .chart {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+        height: 176px;
+        padding-top: 20px;
+      }
+
+      .bar {
+        flex: 1;
+        min-width: 20px;
+        background: linear-gradient(180deg, var(--mint), var(--sea));
+        border-radius: 6px 6px 0 0;
+      }
+
+      .bar:nth-child(2n) {
+        background: linear-gradient(180deg, var(--sun), var(--coral));
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .config-card {
+        padding: 16px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .config-card h4 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        align-items: center;
+        min-height: 44px;
+        border-top: 1px solid #edf1f3;
+      }
+
+      .form-row:first-of-type {
+        border-top: 0;
+      }
+
+      .form-row span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .fake-select,
+      .fake-input {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 34px;
+        padding: 0 10px;
+        color: #26364b;
+        background: #f7f9fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .model-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .model-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .model-item strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+
+      .model-item span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .switch {
+        width: 42px;
+        height: 24px;
+        padding: 3px;
+        background: var(--sea);
+        border-radius: 999px;
+      }
+
+      .switch::after {
+        content: "";
+        display: block;
+        width: 18px;
+        height: 18px;
+        margin-left: auto;
+        background: white;
+        border-radius: 999px;
+      }
+
+      .log-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .log-item {
+        display: grid;
+        grid-template-columns: 90px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 12px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .log-item span {
+        color: var(--muted);
+      }
+
+      .footer-note {
+        margin-top: 24px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      @media (max-width: 1380px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .phone-grid {
+          grid-template-columns: repeat(3, minmax(250px, 1fr));
+        }
+      }
+
+      @media (max-width: 1040px) {
+        .page {
+          width: min(100% - 28px, 820px);
+          padding-top: 22px;
+        }
+
+        .phone-grid {
+          grid-template-columns: repeat(2, minmax(250px, 1fr));
+        }
+
+        .desktop-frame {
+          height: auto;
+          min-height: 860px;
+        }
+
+        .desktop-inner {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .admin-grid,
+        .admin-columns,
+        .config-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: calc(100% - 18px);
+        }
+
+        .hero-main,
+        .summary-panel,
+        .section {
+          padding: 18px;
+        }
+
+        h1 {
+          font-size: 30px;
+        }
+
+        .summary-grid,
+        .page-list,
+        .phone-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .phone {
+          max-width: 330px;
+        }
+
+        .section-title {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="hero-main">
+          <p class="eyebrow">HeartMessage 产品设计稿 v0.1</p>
+          <h1>漂流瓶社交程序，先跑通 H5，再自然扩展到小程序和 App。</h1>
+          <p class="hero-copy">
+            页面拆分以“微信登录、完善资料、捡瓶子、扔瓶子、回复成聊、删除关系、后台配置、AI 模型管理”为主线。
+            第一版不做复杂社区广场，避免偏离漂流瓶的随机感和陪伴感。
+          </p>
+          <div class="pill-row">
+            <span class="pill">用户端 H5：8 个页面</span>
+            <span class="pill">管理后台：9 个页面</span>
+            <span class="pill">MVP 合计：17 个页面</span>
+            <span class="pill">AI 配置独立成模块</span>
+          </div>
+        </div>
+        <aside class="summary-panel">
+          <div class="summary-grid">
+            <div class="metric">
+              <strong>8</strong>
+              <span>用户端页面</span>
+            </div>
+            <div class="metric">
+              <strong>9</strong>
+              <span>后台页面</span>
+            </div>
+            <div class="metric">
+              <strong>17</strong>
+              <span>MVP 页面合计</span>
+            </div>
+          </div>
+          <ul class="page-list">
+            <li>微信登录注册</li>
+            <li>完善个人资料</li>
+            <li>海面首页</li>
+            <li>扔瓶子编辑</li>
+            <li>捡到瓶子详情</li>
+            <li>聊天会话</li>
+            <li>瓶子和消息列表</li>
+            <li>我的资料设置</li>
+            <li>管理员登录</li>
+            <li>运营工作台</li>
+            <li>系统参数配置</li>
+            <li>用户管理</li>
+            <li>瓶子管理</li>
+            <li>会话和举报</li>
+            <li>AI 模型管理</li>
+            <li>AI 人格配置</li>
+            <li>日志中心</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <div>
+            <h2>用户端 H5 页面</h2>
+            <p>移动优先，底部导航固定在“海面、瓶子、消息、我的”四个入口。</p>
+          </div>
+          <span class="tag">8 个页面，含关键空状态和配额状态</span>
+        </div>
+
+        <div class="phone-grid">
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>01 微信登录注册</strong><span>OAuth 入口</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content">
+                  <div class="login-card">
+                    <div class="brand-mark">H</div>
+                    <h3 class="login-title">把一句话<br />交给海风</h3>
+                    <p class="login-sub">随机遇见真实的人，也在无人可捞时遇见温柔的 AI 陪伴。</p>
+                    <button class="primary-btn wechat-btn"><span class="icon"></span>微信一键登录</button>
+                    <p class="terms">登录即代表同意服务协议和隐私政策</p>
+                  </div>
+                </div>
+                <div class="login-ocean"></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>02 完善个人资料</strong><span>首次登录</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content">
+                  <div class="top-line">
+                    <div class="title-block">
+                      <h3>认识你一下</h3>
+                      <p>这些会影响瓶子的匹配体验</p>
+                    </div>
+                  </div>
+                  <div class="profile-card" style="margin-bottom: 14px;">
+                    <div class="avatar-lg">林</div>
+                    <button class="secondary-btn" style="min-height: 36px;">选择头像</button>
+                  </div>
+                  <div class="field">
+                    <label>昵称</label>
+                    <div class="input">海边的林</div>
+                  </div>
+                  <div class="field">
+                    <label>年龄</label>
+                    <div class="input">26</div>
+                  </div>
+                  <div class="field">
+                    <label>性别</label>
+                    <div class="choice-grid">
+                      <div class="choice active">男</div>
+                      <div class="choice">女</div>
+                      <div class="choice">保密</div>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>个人介绍</label>
+                    <div class="input textarea">喜欢夜路、冷饮和突然出现的好消息。</div>
+                  </div>
+                  <button class="primary-btn" style="width: 100%;">进入海面</button>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>03 海面首页</strong><span>捡和扔</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content" style="padding-bottom: 84px;">
+                  <div class="top-line">
+                    <div class="title-block">
+                      <h3>今日海面</h3>
+                      <p>有人把心事放进了瓶子</p>
+                    </div>
+                    <div class="avatar">林</div>
+                  </div>
+                  <div class="quota-row">
+                    <div class="quota"><strong>20</strong><span>可捡瓶子</span></div>
+                    <div class="quota"><strong>3</strong><span>可扔瓶子</span></div>
+                  </div>
+                  <div class="sea-stage">
+                    <div class="floating-bottle"></div>
+                    <div class="wave"></div>
+                  </div>
+                  <div class="action-row">
+                    <button class="primary-btn"><span class="icon"></span>捡瓶子</button>
+                    <button class="secondary-btn"><span class="icon"></span>扔瓶子</button>
+                  </div>
+                </div>
+                <nav class="mobile-nav">
+                  <div class="nav-item active"><span class="nav-icon"></span>海面</div>
+                  <div class="nav-item"><span class="nav-icon"></span>瓶子</div>
+                  <div class="nav-item"><span class="nav-icon"></span>消息</div>
+                  <div class="nav-item"><span class="nav-icon"></span>我的</div>
+                </nav>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>04 扔瓶子编辑</strong><span>每日 3 次</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content">
+                  <div class="top-line">
+                    <div class="title-block">
+                      <h3>扔一个瓶子</h3>
+                      <p>当天有效，明天会被海浪带走</p>
+                    </div>
+                  </div>
+                  <div class="composer-card">
+                    <div class="composer-top">
+                      <span>公开给随机的人</span>
+                      <span>还可扔 2 次</span>
+                    </div>
+                    <div class="paper-box">今天突然很想问：你最近一次觉得生活变轻，是因为什么？</div>
+                    <div class="composer-tools">
+                      <div class="tool-btn">图片</div>
+                      <div class="tool-btn">匿名</div>
+                      <div class="tool-btn">预览</div>
+                    </div>
+                    <button class="primary-btn" style="width: 100%;">封进瓶子</button>
+                  </div>
+                  <p class="footer-note">内容会经过安全审核；违规瓶子不会被投放。</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>05 捡到瓶子详情</strong><span>回复成聊</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content">
+                  <div class="top-line">
+                    <div class="title-block">
+                      <h3>你捡到一个瓶子</h3>
+                      <p>来自 3 小时前的海面</p>
+                    </div>
+                  </div>
+                  <div class="bottle-letter">
+                    <div class="letter-meta">
+                      <div class="avatar-sm">乔</div>
+                      <div>
+                        <strong>乔木</strong>
+                        <span>27 岁 · 保密 · 城市夜行者</span>
+                      </div>
+                    </div>
+                    <p class="letter-copy">
+                      如果你也刚好睡不着，可以告诉我一个最近支撑你的微小东西吗？我想收集一些不太响亮、但真的有用的答案。
+                    </p>
+                  </div>
+                  <div class="reply-box">
+                    <p>回复后会开启一段聊天。你也可以删除这个瓶子，删除后不再收到消息。</p>
+                    <div class="action-row">
+                      <button class="danger-btn">删除</button>
+                      <button class="primary-btn">回复</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>06 聊天会话</strong><span>瓶子回复后</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content">
+                  <div class="chat-header">
+                    <div class="chat-person">
+                      <div class="avatar-sm">乔</div>
+                      <div>
+                        <strong>乔木</strong>
+                        <span>由瓶子开启</span>
+                      </div>
+                    </div>
+                    <button class="ghost-btn" style="min-height: 34px; padding: 0 10px;">删除</button>
+                  </div>
+                  <div class="chat-stream">
+                    <div class="bubble left">你说的微小东西，我最近想到的是便利店门口的热豆浆。</div>
+                    <div class="bubble right">这很具体，也很温暖。我最近是下班路上的风。</div>
+                    <div class="bubble left">风这个答案好自由。</div>
+                    <div class="bubble right">也可能只是我走得终于慢了一点。</div>
+                  </div>
+                  <div class="chat-input">
+                    <button class="round-tool"><span class="icon"></span></button>
+                    <div class="input">输入回复...</div>
+                    <button class="send-tool">发</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>07 瓶子和消息列表</strong><span>收件箱</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content" style="padding-bottom: 84px;">
+                  <div class="top-line">
+                    <div class="title-block">
+                      <h3>我的瓶子</h3>
+                      <p>回复、聊天和已删除关系</p>
+                    </div>
+                  </div>
+                  <div class="list-tabs">
+                    <div class="list-tab active">聊天中</div>
+                    <div class="list-tab">我捡到</div>
+                    <div class="list-tab">我扔出</div>
+                  </div>
+                  <div class="message-list">
+                    <div class="message-item">
+                      <div class="avatar-sm">乔</div>
+                      <div><strong>乔木</strong><p>风这个答案好自由。</p></div>
+                      <span class="badge">2</span>
+                    </div>
+                    <div class="message-item">
+                      <div class="avatar-sm" style="background: linear-gradient(135deg, #ff8066, #ffd166);">夏</div>
+                      <div><strong>夏迟</strong><p>我刚刚看到你的瓶子。</p></div>
+                      <span class="badge">1</span>
+                    </div>
+                    <div class="message-item">
+                      <div class="avatar-sm" style="background: linear-gradient(135deg, #71d6b4, #a18cd1);">AI</div>
+                      <div><strong>海雾电台</strong><p>今晚给你留了一段话。</p></div>
+                      <span class="status-chip ok">AI</span>
+                    </div>
+                  </div>
+                </div>
+                <nav class="mobile-nav">
+                  <div class="nav-item"><span class="nav-icon"></span>海面</div>
+                  <div class="nav-item active"><span class="nav-icon"></span>瓶子</div>
+                  <div class="nav-item"><span class="nav-icon"></span>消息</div>
+                  <div class="nav-item"><span class="nav-icon"></span>我的</div>
+                </nav>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-wrap">
+            <div class="screen-label"><strong>08 我的资料设置</strong><span>个人中心</span></div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="status-bar">
+                  <span>09:41</span>
+                  <span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
+                </div>
+                <div class="mobile-content" style="padding-bottom: 84px;">
+                  <div class="profile-card">
+                    <div class="avatar-lg">林</div>
+                    <h3>海边的林</h3>
+                    <p>喜欢夜路、冷饮和突然出现的好消息。</p>
+                    <div class="profile-stats">
+                      <div><strong>12</strong><span>扔出</span></div>
+                      <div><strong>48</strong><span>捡到</span></div>
+                      <div><strong>9</strong><span>聊天</span></div>
+                    </div>
+                    <button class="secondary-btn" style="width: 100%;">编辑资料</button>
+                  </div>
+                  <div class="setting-list">
+                    <div class="setting-item"><span>隐私设置</span><span>›</span></div>
+                    <div class="setting-item"><span>黑名单</span><span>›</span></div>
+                    <div class="setting-item"><span>反馈与举报</span><span>›</span></div>
+                    <div class="setting-item"><span>退出登录</span><span>›</span></div>
+                  </div>
+                </div>
+                <nav class="mobile-nav">
+                  <div class="nav-item"><span class="nav-icon"></span>海面</div>
+                  <div class="nav-item"><span class="nav-icon"></span>瓶子</div>
+                  <div class="nav-item"><span class="nav-icon"></span>消息</div>
+                  <div class="nav-item active"><span class="nav-icon"></span>我的</div>
+                </nav>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <div>
+            <h2>管理后台页面</h2>
+            <p>后台围绕运营参数、用户、瓶子、会话、AI 模型和日志，优先保证可查、可配、可追踪。</p>
+          </div>
+          <span class="tag">9 个页面，支持 Cloudflare D1/KV/R2/Queues</span>
+        </div>
+
+        <div class="admin-board">
+          <div class="desktop-frame">
+            <div class="desktop-inner">
+              <aside class="sidebar">
+                <div class="admin-logo"><span class="admin-logo-mark">H</span>Heart Admin</div>
+                <nav class="side-nav">
+                  <div class="side-item active"><span class="side-icon"></span>运营工作台</div>
+                  <div class="side-item"><span class="side-icon"></span>系统参数</div>
+                  <div class="side-item"><span class="side-icon"></span>用户管理</div>
+                  <div class="side-item"><span class="side-icon"></span>瓶子管理</div>
+                  <div class="side-item"><span class="side-icon"></span>会话举报</div>
+                  <div class="side-item"><span class="side-icon"></span>AI 模型</div>
+                  <div class="side-item"><span class="side-icon"></span>AI 人格</div>
+                  <div class="side-item"><span class="side-icon"></span>日志中心</div>
+                </nav>
+              </aside>
+              <section class="admin-main">
+                <div class="admin-top">
+                  <div>
+                    <h3>运营工作台</h3>
+                    <p>今日瓶子流转、聊天增长、AI 补位和内容安全概览</p>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="ghost-btn">导出</button>
+                    <button class="primary-btn">新建公告</button>
+                  </div>
+                </div>
+                <div class="admin-grid">
+                  <div class="admin-card"><span>今日扔瓶</span><strong>1,284</strong><em>较昨日 +12%</em></div>
+                  <div class="admin-card"><span>今日捡瓶</span><strong>8,936</strong><em>剩余额度健康</em></div>
+                  <div class="admin-card"><span>开启聊天</span><strong>624</strong><em>转化率 7.0%</em></div>
+                  <div class="admin-card"><span>AI 补位</span><strong>118</strong><em>无瓶时触发</em></div>
+                </div>
+                <div class="admin-columns">
+                  <div class="panel">
+                    <div class="panel-head">
+                      <strong>实时瓶子队列</strong>
+                      <div class="search">搜索瓶子、用户、关键词</div>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>瓶子</th>
+                          <th>用户</th>
+                          <th>状态</th>
+                          <th>有效期</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>#B10291</td>
+                          <td>乔木</td>
+                          <td><span class="status-chip ok">投放中</span></td>
+                          <td>今天 23:59</td>
+                          <td>查看</td>
+                        </tr>
+                        <tr>
+                          <td>#B10288</td>
+                          <td>夏迟</td>
+                          <td><span class="status-chip warn">待审核</span></td>
+                          <td>今天 23:59</td>
+                          <td>审核</td>
+                        </tr>
+                        <tr>
+                          <td>#B10280</td>
+                          <td>海雾电台</td>
+                          <td><span class="status-chip ok">AI 生成</span></td>
+                          <td>今天 23:59</td>
+                          <td>查看</td>
+                        </tr>
+                        <tr>
+                          <td>#B10275</td>
+                          <td>匿名用户</td>
+                          <td><span class="status-chip bad">已拦截</span></td>
+                          <td>已结束</td>
+                          <td>详情</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head">
+                      <strong>7 日趋势</strong>
+                      <span class="status-chip ok">正常</span>
+                    </div>
+                    <div class="chart">
+                      <div class="bar" style="height: 56%;"></div>
+                      <div class="bar" style="height: 72%;"></div>
+                      <div class="bar" style="height: 46%;"></div>
+                      <div class="bar" style="height: 84%;"></div>
+                      <div class="bar" style="height: 64%;"></div>
+                      <div class="bar" style="height: 92%;"></div>
+                      <div class="bar" style="height: 78%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="desktop-frame">
+            <div class="desktop-inner">
+              <aside class="sidebar">
+                <div class="admin-logo"><span class="admin-logo-mark">H</span>Heart Admin</div>
+                <nav class="side-nav">
+                  <div class="side-item"><span class="side-icon"></span>运营工作台</div>
+                  <div class="side-item active"><span class="side-icon"></span>系统参数</div>
+                  <div class="side-item"><span class="side-icon"></span>用户管理</div>
+                  <div class="side-item"><span class="side-icon"></span>瓶子管理</div>
+                  <div class="side-item"><span class="side-icon"></span>会话举报</div>
+                  <div class="side-item"><span class="side-icon"></span>AI 模型</div>
+                  <div class="side-item"><span class="side-icon"></span>AI 人格</div>
+                  <div class="side-item"><span class="side-icon"></span>日志中心</div>
+                </nav>
+              </aside>
+              <section class="admin-main">
+                <div class="admin-top">
+                  <div>
+                    <h3>系统参数配置</h3>
+                    <p>控制每日额度、瓶子有效期、AI 补位策略和安全开关</p>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="ghost-btn">重置</button>
+                    <button class="primary-btn">保存配置</button>
+                  </div>
+                </div>
+                <div class="config-grid">
+                  <div class="config-card">
+                    <h4>用户额度</h4>
+                    <div class="form-row"><span>每日可捡</span><div class="fake-input">20 次</div></div>
+                    <div class="form-row"><span>每日可扔</span><div class="fake-input">3 次</div></div>
+                    <div class="form-row"><span>重置时间</span><div class="fake-select">每日 00:00</div></div>
+                    <div class="form-row"><span>超额策略</span><div class="fake-select">提示明日再来</div></div>
+                  </div>
+                  <div class="config-card">
+                    <h4>瓶子生命周期</h4>
+                    <div class="form-row"><span>有效期</span><div class="fake-input">当天 23:59 失效</div></div>
+                    <div class="form-row"><span>被捡次数</span><div class="fake-select">1 人捡到后下架</div></div>
+                    <div class="form-row"><span>删除规则</span><div class="fake-select">双向消息隔离</div></div>
+                    <div class="form-row"><span>审核策略</span><div class="fake-select">敏感词 + AI 审核</div></div>
+                  </div>
+                  <div class="config-card">
+                    <h4>AI 补位</h4>
+                    <div class="form-row"><span>触发条件</span><div class="fake-select">无可捞瓶子</div></div>
+                    <div class="form-row"><span>生成数量</span><div class="fake-input">每批 30 个</div></div>
+                    <div class="form-row"><span>生成模型</span><div class="fake-select">DeepSeek Chat</div></div>
+                    <div class="form-row"><span>回复模型</span><div class="fake-select">GPT-4.1 mini</div></div>
+                  </div>
+                  <div class="config-card">
+                    <h4>安全和风控</h4>
+                    <div class="form-row"><span>新用户冷却</span><div class="fake-input">5 分钟</div></div>
+                    <div class="form-row"><span>举报阈值</span><div class="fake-input">3 次自动隐藏</div></div>
+                    <div class="form-row"><span>R2 附件</span><div class="fake-select">图片开启</div></div>
+                    <div class="form-row"><span>KV 缓存</span><div class="fake-select">配置缓存 5 分钟</div></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="desktop-frame">
+            <div class="desktop-inner">
+              <aside class="sidebar">
+                <div class="admin-logo"><span class="admin-logo-mark">H</span>Heart Admin</div>
+                <nav class="side-nav">
+                  <div class="side-item"><span class="side-icon"></span>运营工作台</div>
+                  <div class="side-item"><span class="side-icon"></span>系统参数</div>
+                  <div class="side-item"><span class="side-icon"></span>用户管理</div>
+                  <div class="side-item"><span class="side-icon"></span>瓶子管理</div>
+                  <div class="side-item"><span class="side-icon"></span>会话举报</div>
+                  <div class="side-item active"><span class="side-icon"></span>AI 模型</div>
+                  <div class="side-item"><span class="side-icon"></span>AI 人格</div>
+                  <div class="side-item"><span class="side-icon"></span>日志中心</div>
+                </nav>
+              </aside>
+              <section class="admin-main">
+                <div class="admin-top">
+                  <div>
+                    <h3>AI 模型管理</h3>
+                    <p>统一维护供应商、模型、用途、密钥状态、调用日志和成本</p>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="ghost-btn">调用日志</button>
+                    <button class="primary-btn">新增模型</button>
+                  </div>
+                </div>
+                <div class="admin-columns">
+                  <div class="panel">
+                    <div class="panel-head">
+                      <strong>模型列表</strong>
+                      <div class="search">按平台、用途、状态搜索</div>
+                    </div>
+                    <div class="model-list">
+                      <div class="model-item">
+                        <div><strong>OpenAI / GPT-4.1 mini</strong><span>用途：聊天回复、内容改写 · 成本：低</span></div>
+                        <div class="switch"></div>
+                      </div>
+                      <div class="model-item">
+                        <div><strong>DeepSeek / deepseek-chat</strong><span>用途：人格生成、瓶子生成 · 成本：低</span></div>
+                        <div class="switch"></div>
+                      </div>
+                      <div class="model-item">
+                        <div><strong>Moonshot / kimi-k2</strong><span>用途：长上下文会话 · 成本：中</span></div>
+                        <div class="switch"></div>
+                      </div>
+                      <div class="model-item">
+                        <div><strong>通义千问 / qwen-plus</strong><span>用途：内容审核候选 · 成本：低</span></div>
+                        <div class="switch"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head">
+                      <strong>用途绑定</strong>
+                      <span class="status-chip ok">已启用</span>
+                    </div>
+                    <div class="form-row"><span>人格生成</span><div class="fake-select">DeepSeek Chat</div></div>
+                    <div class="form-row"><span>瓶子生成</span><div class="fake-select">DeepSeek Chat</div></div>
+                    <div class="form-row"><span>聊天回复</span><div class="fake-select">GPT-4.1 mini</div></div>
+                    <div class="form-row"><span>内容审核</span><div class="fake-select">Qwen Plus</div></div>
+                    <div class="form-row"><span>失败降级</span><div class="fake-select">自动切换备用模型</div></div>
+                  </div>
+                </div>
+                <div class="panel" style="margin-top: 16px;">
+                  <div class="panel-head">
+                    <strong>最近调用日志</strong>
+                    <span class="status-chip warn">保留 30 天</span>
+                  </div>
+                  <div class="log-list">
+                    <div class="log-item"><span>12:40:11</span><strong>人格生成成功，消耗 1,280 tokens</strong><span>DeepSeek</span></div>
+                    <div class="log-item"><span>12:38:02</span><strong>聊天回复成功，延迟 860ms</strong><span>OpenAI</span></div>
+                    <div class="log-item"><span>12:35:19</span><strong>内容审核命中低风险词，人工复核</strong><span>Qwen</span></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <div>
+            <h2>页面范围结论</h2>
+            <p>第一阶段建议按 17 个页面推进，其中 H5 页面先开发，后台页面同步打地基。</p>
+          </div>
+        </div>
+        <p class="footer-note">
+          后续小程序和 App 不是新增一套产品逻辑，而是复用用户端 8 个页面的信息架构。真正需要提前抽好的，是登录适配层、上传适配层、聊天消息协议、AI 模型供应商适配层和权限配置。
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

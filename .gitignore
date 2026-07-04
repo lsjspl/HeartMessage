@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.output/
+.wrangler/
+.turbo/
+.vite/
+coverage/
+*.local
+.env
+.env.*
+!.env.example
+apps/client/src/uni_modules/
+apps/client/unpackage/
+apps/admin/dist/
+apps/api/dist/
+output/
+tmp/

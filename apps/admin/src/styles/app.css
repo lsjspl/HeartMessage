@@ -1,0 +1,103 @@
+:root {
+  color: #14213d;
+  background: #f6f8fb;
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1120px;
+}
+
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  min-height: 100vh;
+  background: #12353e;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 18px;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.admin-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: #ff8066;
+  border-radius: 8px;
+}
+
+.admin-sidebar .el-menu {
+  border-right: 0;
+}
+
+.admin-main {
+  padding: 24px;
+  background: #f6f8fb;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.page-head h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.page-head p {
+  margin: 0;
+  color: #65758b;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.metric-card span {
+  color: #65758b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 16px;
+}
+
+.panel-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 900;
+}

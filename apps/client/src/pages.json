@@ -1,0 +1,82 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "今日海面"
+      }
+    },
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/profile/setup",
+      "style": {
+        "navigationBarTitleText": "完善资料"
+      }
+    },
+    {
+      "path": "pages/bottles/throw",
+      "style": {
+        "navigationBarTitleText": "扔瓶子"
+      }
+    },
+    {
+      "path": "pages/bottles/detail",
+      "style": {
+        "navigationBarTitleText": "瓶子详情"
+      }
+    },
+    {
+      "path": "pages/chats/index",
+      "style": {
+        "navigationBarTitleText": "消息"
+      }
+    },
+    {
+      "path": "pages/chats/detail",
+      "style": {
+        "navigationBarTitleText": "聊天"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#7a8797",
+    "selectedColor": "#0f8f8c",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "海面"
+      },
+      {
+        "pagePath": "pages/bottles/detail",
+        "text": "瓶子"
+      },
+      {
+        "pagePath": "pages/chats/index",
+        "text": "消息"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "HeartMessage",
+    "navigationBarBackgroundColor": "#fbfcf8",
+    "backgroundColor": "#fbfcf8"
+  }
+}
