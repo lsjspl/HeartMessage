@@ -6,11 +6,10 @@
   "scripts": {
     "dev": "wrangler dev --local --port 8787",
     "deploy": "wrangler deploy",
-    "deploy:ci": "pnpm build && pnpm db:migrate:remote && pnpm seed:cloudflare-config && wrangler deploy",
+    "deploy:ci": "pnpm build && pnpm db:migrate:remote && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply heart-message-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply heart-message-db --remote",
-    "seed:cloudflare-config": "node ../../scripts/seed-cloudflare-config.mjs",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

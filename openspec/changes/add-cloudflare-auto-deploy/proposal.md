@@ -6,15 +6,16 @@
 
 ## What Changes
 
-- 增加 API 生产部署脚本，按顺序执行类型检查、远程 D1 migration、KV 首次配置初始化和 Worker 部署。
-- 增加 Cloudflare KV 初始化脚本，从构建环境变量读取 Token 密钥、CORS 白名单等敏感或运行配置。
+- 增加 API 生产部署脚本，按顺序执行类型检查、远程 D1 migration 和 Worker 部署。
+- 移除从 Cloudflare 构建环境变量初始化业务配置的路径，运行参数和敏感值统一由后台系统配置维护。
+- 增加后端首次运行的配置自初始化：系统配置缺失时写入默认系统配置，`AUTH_TOKEN_SECRET` 缺失时生成随机密钥并写入敏感配置。
 - 增加 D1 seed migration，部署数据库时创建默认超级管理员 `admin / 123456`。
-- 更新 Cloudflare 部署文档，说明网页端绑定 GitHub 时的 API deploy command、Pages 构建命令和必需构建 Secret。
-- 保持真实密钥不入仓库，生产资源操作仍需用户在 Cloudflare/GitHub 中显式配置 token 和资源。
+- 更新 Cloudflare 部署文档，说明网页端绑定 GitHub 时的 API deploy command、Pages 构建命令和后台配置入口。
+- 保持真实密钥不入仓库，生产资源操作仍需用户在 Cloudflare/GitHub 中显式配置资源绑定。
 
 ## Impact
 
 - 影响 `apps/api/package.json`。
-- 新增 `scripts/seed-cloudflare-config.mjs`。
+- 影响 `apps/api/src/services/settings.ts` 和 `apps/api/src/services/sensitive-config.ts`。
 - 更新 `docs/deployment/cloudflare.md`。
 - 不执行生产部署、不执行远程 D1 migration、不修改远程 KV。

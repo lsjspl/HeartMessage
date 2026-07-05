@@ -10,8 +10,10 @@ const SETTINGS_KEY = "system-settings";
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   runtime: {
-    environment: "local",
+    environment: "production",
     corsOrigins: [
+      "https://heart-message-admin.pages.dev",
+      "https://heart-message-client.pages.dev",
       "http://localhost:5173",
       "http://127.0.0.1:5173",
       "http://localhost:5174",
@@ -38,6 +40,7 @@ export async function getSystemSettings(env: Env): Promise<SystemSettings> {
   const stored = await env.CONFIG_KV.get(SETTINGS_KEY);
 
   if (!stored) {
+    await env.CONFIG_KV.put(SETTINGS_KEY, JSON.stringify(DEFAULT_SYSTEM_SETTINGS));
     return DEFAULT_SYSTEM_SETTINGS;
   }
 

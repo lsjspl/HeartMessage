@@ -43,6 +43,18 @@ function previewValue(value: string) {
   return `${value.slice(0, 2)}***${value.slice(-4)}`;
 }
 
+function createSecretValue() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
 async function readConfigRecord(env: Env): Promise<SensitiveConfigRecord> {
   const stored = await env.CONFIG_KV.get(SENSITIVE_CONFIG_KEY);
 
@@ -55,6 +67,30 @@ async function readConfigRecord(env: Env): Promise<SensitiveConfigRecord> {
 
 async function writeConfigRecord(env: Env, record: SensitiveConfigRecord) {
   await env.CONFIG_KV.put(SENSITIVE_CONFIG_KEY, JSON.stringify(record));
+}
+
+async function createBootstrapAuthSecret(env: Env, record: SensitiveConfigRecord) {
+  const existingValue = record.values?.AUTH_TOKEN_SECRET;
+
+  if (existingValue) {
+    return { value: existingValue, source: "custom" as const };
+  }
+
+  const now = Date.now();
+  const value = createSecretValue();
+
+  await writeConfigRecord(env, {
+    values: {
+      ...(record.values ?? {}),
+      AUTH_TOKEN_SECRET: value
+    },
+    updatedAt: {
+      ...(record.updatedAt ?? {}),
+      AUTH_TOKEN_SECRET: now
+    }
+  });
+
+  return { value, source: "custom" as const };
 }
 
 export async function resolveSensitiveConfig(
@@ -73,6 +109,10 @@ export async function resolveSensitiveConfig(
 
   if (localDefault && isLocalRuntime(settings.runtime.environment)) {
     return { value: localDefault, source: "local_default" };
+  }
+
+  if (key === "AUTH_TOKEN_SECRET") {
+    return createBootstrapAuthSecret(env, record);
   }
 
   throw new AppError(500, "SENSITIVE_CONFIG_NOT_CONFIGURED", `${labelForKey(key)}未配置`);

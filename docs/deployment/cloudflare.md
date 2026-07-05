@@ -34,49 +34,31 @@ Cloudflare Dashboard 操作：
 1. 进入 `Workers & Pages`。
 2. 创建或选择 Worker：`heart-message-api`。
 3. 在 `Settings` -> `Builds` 中连接 GitHub 仓库。
-4. Root directory 选择 `apps/api`。
-5. Install command 填：
+4. Root directory 留空，保持在仓库根目录。
+5. Build command 可留空；如果界面要求填写，填：
 
 ```bash
-pnpm install --frozen-lockfile
+pnpm --filter @heart-message/api build
 ```
 
 6. Deploy command 填：
 
 ```bash
-pnpm deploy:ci
+pnpm --filter @heart-message/api deploy:ci
 ```
 
-`pnpm deploy:ci` 会按顺序执行：
+`deploy:ci` 会按顺序执行 API build、远程 D1 migration 和 Worker 部署。推送到 GitHub 后会自动应用未执行过的 migration，不要再手动去 D1 Console 粘贴 SQL。
 
-1. `pnpm build`
-2. `pnpm db:migrate:remote`
-3. `pnpm seed:cloudflare-config`
-4. `wrangler deploy`
+## 后台系统配置
 
-也就是说，推送到 GitHub 后会自动执行远程 D1 migration、初始化缺失 KV 配置并部署 Worker。不要再手动去 D1 Console 粘贴 SQL。
+API 自动部署不得通过 Cloudflare 构建环境变量维护运行环境、CORS 白名单、Token 签名密钥、微信配置或 AI Key。
 
-## API 构建 Secret
+首次访问 API 时，后端会在 `CONFIG_KV` 中写入缺失的系统配置默认值；首次签发登录 Token 时，如果后台敏感配置中还没有 `AUTH_TOKEN_SECRET`，后端会生成随机密钥并写入敏感配置。之后这些值都必须在管理后台中查看状态和修改：
 
-API 自动部署需要在 Cloudflare Worker 的构建环境中配置以下变量。它们是构建 Secret，不是应用运行时 `wrangler vars`。
+- 系统参数：运行环境、CORS 白名单、额度、AI 触发策略、用户画像评估计划。
+- 敏感配置：`AUTH_TOKEN_SECRET`、微信 App Secret、AI Key。
 
-必填：
-
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
-- `PRODUCTION_CORS_ORIGINS`：逗号分隔，例如 `https://admin.example.com,https://app.example.com`
-- `AUTH_TOKEN_SECRET`
-
-可选：
-
-- `CONFIG_KV_NAMESPACE_ID`：不填时会读取 `apps/api/wrangler.jsonc` 中 `CONFIG_KV` 的 id。
-- `WECHAT_APP_ID`
-- `WECHAT_APP_SECRET`
-- `LOCAL_TEST_MODEL_API_KEY`
-- `EXTRA_SENSITIVE_CONFIG_JSON`：JSON object，用来一次性写入额外 AI Key，例如 `{"DEEPSEEK_API_KEY":"replace-with-real-secret"}`
-- `OVERWRITE_CLOUDFLARE_CONFIG`：默认不填。只有需要覆盖已有 KV 配置时才填 `true`。
-
-初始化脚本默认不会覆盖已经存在的 `system-settings` 和 `system-sensitive-config`，避免后台已经改过的生产配置被每次部署重置。
+上线后必须进入后台确认 CORS 白名单只包含正式管理后台和用户端域名，并补齐微信和 AI 配置。
 
 ## 本地直接部署方式
 
@@ -122,7 +104,7 @@ cd C:\Users\lsj\Desktop\IDEAProject\HeartMessage
 pnpm --filter @heart-message/api deploy:ci
 ```
 
-`deploy:ci` 会执行远程 D1 migration、KV 初始化和 Worker 部署。未获得生产操作确认时，不得执行。
+`deploy:ci` 会执行远程 D1 migration 和 Worker 部署。未获得生产操作确认时，不得执行。
 
 ## 管理后台 Pages
 
