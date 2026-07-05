@@ -4,7 +4,7 @@
   "compatibility_date": "2026-07-04",
   "pages_build_output_dir": "dist/build/h5",
   "vars": {
-    "VITE_API_BASE_URL": "https://replace-with-api-domain.example.com",
+    "VITE_API_BASE_URL": "https://heart-message-api.lsjsplcf1.workers.dev",
     "VITE_WECHAT_APP_ID": "replace-with-wechat-app-id",
     "VITE_WECHAT_REDIRECT_URI": "https://replace-with-client-domain.example.com/pages/auth/login"
   }
