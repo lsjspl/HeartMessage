@@ -11,11 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
     "paths": {
-      "@heart-message/shared": ["packages/shared/src/index.ts"],
-      "@heart-message/db": ["packages/db/src/index.ts"],
-      "@heart-message/ai": ["packages/ai/src/index.ts"]
+      "@heart-message/shared": ["./packages/shared/src/index.ts"],
+      "@heart-message/db": ["./packages/db/src/index.ts"],
+      "@heart-message/ai": ["./packages/ai/src/index.ts"]
     }
   }
 }

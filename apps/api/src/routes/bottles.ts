@@ -1,70 +1,56 @@
 import { Hono } from "hono";
-import {
-  createOk,
-  DAILY_PICK_LIMIT,
-  DAILY_THROW_LIMIT,
-  ReplyBottleSchema,
-  ThrowBottleSchema
-} from "@heart-message/shared";
+import { createOk, ReplyBottleSchema, ThrowBottleSchema } from "@heart-message/shared";
 import type { Env } from "../env";
+import { requireAuth, type AuthVariables } from "../middleware/auth";
+import {
+  deletePickedBottle,
+  getBottleForUser,
+  getBottleQuotaForUser,
+  pickBottle,
+  replyToBottle,
+  throwBottle
+} from "../services/bottles";
 
-export const bottleRoutes = new Hono<{ Bindings: Env }>()
-  .get("/quota", (context) => {
-    return context.json(
-      createOk({
-        pickLimit: DAILY_PICK_LIMIT,
-        throwLimit: DAILY_THROW_LIMIT,
-        pickRemaining: DAILY_PICK_LIMIT,
-        throwRemaining: DAILY_THROW_LIMIT
-      })
-    );
+export const bottleRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariables> }>()
+  .use("*", requireAuth)
+  .get("/quota", async (context) => {
+    const userId = context.get("userId")!;
+    const quota = await getBottleQuotaForUser(context.env, userId);
+
+    return context.json(createOk(quota));
   })
   .post("/throw", async (context) => {
+    const userId = context.get("userId")!;
     const input = ThrowBottleSchema.parse(await context.req.json());
+    const result = await throwBottle(context.env, userId, input);
 
-    return context.json(
-      createOk({
-        id: crypto.randomUUID(),
-        status: "reviewing",
-        expiresAt: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-        ...input
-      })
-    );
+    return context.json(createOk(result));
   })
-  .post("/pick", (context) => {
-    return context.json(
-      createOk({
-        id: "demo-bottle",
-        author: {
-          nickname: "乔木",
-          age: 27,
-          gender: "unknown"
-        },
-        content:
-          "如果你也刚好睡不着，可以告诉我一个最近支撑你的微小东西吗？我想收集一些不太响亮、但真的有用的答案。",
-        pickedAt: new Date().toISOString()
-      })
-    );
+  .post("/pick", async (context) => {
+    const userId = context.get("userId")!;
+    const result = await pickBottle(context.env, userId);
+
+    return context.json(createOk(result));
+  })
+  .get("/:id", async (context) => {
+    const userId = context.get("userId")!;
+    const bottle = await getBottleForUser(context.env, userId, context.req.param("id"));
+
+    return context.json(createOk(bottle));
   })
   .post("/:id/reply", async (context) => {
+    const userId = context.get("userId")!;
     const input = ReplyBottleSchema.parse({
       ...(await context.req.json()),
       bottleId: context.req.param("id")
     });
+    const result = await replyToBottle(context.env, userId, input);
 
-    return context.json(
-      createOk({
-        conversationId: "demo-conversation",
-        bottleId: input.bottleId,
-        firstMessage: input.content
-      })
-    );
+    return context.json(createOk(result));
   })
-  .delete("/:id", (context) => {
-    return context.json(
-      createOk({
-        bottleId: context.req.param("id"),
-        deleted: true
-      })
-    );
+  .delete("/:id", async (context) => {
+    const userId = context.get("userId")!;
+    const result = await deletePickedBottle(context.env, userId, context.req.param("id"));
+
+    return context.json(createOk(result));
   });

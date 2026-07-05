@@ -53,6 +53,7 @@ export const bottles = sqliteTable(
   {
     id: text("id").primaryKey(),
     authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+    aiPersonaId: text("ai_persona_id"),
     content: text("content").notNull(),
     mediaKeys: text("media_keys", { mode: "json" }).$type<string[]>().notNull().default([]),
     isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(false),
@@ -106,6 +107,8 @@ export const conversations = sqliteTable(
     participantAId: text("participant_a_id").references(() => users.id, { onDelete: "set null" }),
     participantBId: text("participant_b_id").references(() => users.id, { onDelete: "set null" }),
     status: text("status", { enum: ["active", "deleted", "blocked"] }).notNull().default("active"),
+    deletedByParticipantAAt: integer("deleted_by_participant_a_at", { mode: "timestamp_ms" }),
+    deletedByParticipantBAt: integer("deleted_by_participant_b_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
   },
@@ -127,7 +130,8 @@ export const messages = sqliteTable(
     senderType: text("sender_type", { enum: ["user", "ai", "system"] }).notNull(),
     content: text("content").notNull(),
     status: text("status", { enum: ["sent", "blocked", "deleted"] }).notNull().default("sent"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull()
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    readAt: integer("read_at", { mode: "timestamp_ms" })
   },
   (table) => ({
     conversationCreatedIdx: index("messages_conversation_created_idx").on(
@@ -140,6 +144,7 @@ export const messages = sqliteTable(
 export const aiProviders = sqliteTable("ai_providers", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  adapterType: text("adapter_type", { enum: ["openai_compatible"] }).notNull().default("openai_compatible"),
   baseUrl: text("base_url"),
   apiKeySecretName: text("api_key_secret_name").notNull(),
   isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
@@ -166,6 +171,23 @@ export const aiModels = sqliteTable(
   },
   (table) => ({
     purposeIdx: index("ai_models_purpose_idx").on(table.purpose, table.isEnabled)
+  })
+);
+
+export const aiPersonas = sqliteTable(
+  "ai_personas",
+  {
+    id: text("id").primaryKey(),
+    displayName: text("display_name").notNull(),
+    bio: text("bio").notNull(),
+    age: integer("age"),
+    gender: text("gender", { enum: ["male", "female", "unknown"] }).notNull().default("unknown"),
+    systemPrompt: text("system_prompt").notNull(),
+    modelId: text("model_id").references(() => aiModels.id, { onDelete: "set null" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull()
+  },
+  (table) => ({
+    modelIdx: index("ai_personas_model_idx").on(table.modelId)
   })
 );
 

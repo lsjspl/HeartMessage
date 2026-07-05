@@ -102,6 +102,12 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
     - 不允许留下“看起来没人用但还在导出”的死代码。
     - 如果无法立即删除引用，必须写明阻塞原因和后续删除任务。
 
+19. 用户端 uni-app 依赖必须按 uni 版本线成组维护。
+    - `apps/client` 的 Vue、Vite、`@dcloudio/*`、`@dcloudio/types` 和相关编译依赖必须以 uni-app Vue3 发行线为准。
+    - 升级用户端 Vue 或 Vite 前，必须先查询 `@dcloudio/uni-app` 的 `vue3` dist-tag，以及对应 `@dcloudio/vite-plugin-uni` 的 `peerDependencies` 和 `dependencies`。
+    - 不允许因为管理后台、通用 Vue 项目或 npm `latest` tag 更新，就单独升级用户端 Vue、Vite 或 uni 相关包。
+    - 当前确认的用户端基线是 `@dcloudio/* 3.0.0-5010420260703001`、`vue 3.4.21`、`vite 5.2.8`、`@dcloudio/types 3.4.31`；后续如 uni Vue3 发行线变化，必须整体核对后再改。
+
 ## 执行检查
 
 修改前：
@@ -112,6 +118,7 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
 - 确认是否会引入 fallback、兼容旧逻辑或保留旧实现；如果会，必须重新设计或写明删除计划。
 - 确认是否需要先写或更新 OpenSpec；新功能必须先写规格。
 - 确认是否需要新增依赖；如需要，先说明理由。
+- 如果修改 `apps/client` 依赖，先确认 uni-app Vue3 发行线和 peer 依赖，不得单独追 Vue、Vite 最新版。
 
 修改中：
 

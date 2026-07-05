@@ -17,6 +17,10 @@ export function getAuthToken() {
   return authToken;
 }
 
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}
+
 export function setAuthToken(token: string) {
   authToken = token;
   uni.setStorageSync(TOKEN_STORAGE_KEY, token);

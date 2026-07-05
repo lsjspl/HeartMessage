@@ -1,62 +1,36 @@
 import { Hono } from "hono";
 import { createOk, SendMessageSchema } from "@heart-message/shared";
 import type { Env } from "../env";
+import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { deleteConversation, getConversationMessages, listChats, sendChatMessage } from "../services/chats";
 
-export const chatRoutes = new Hono<{ Bindings: Env }>()
-  .get("/", (context) => {
-    return context.json(
-      createOk([
-        {
-          id: "demo-conversation",
-          nickname: "乔木",
-          preview: "风这个答案好自由。",
-          unreadCount: 2,
-          updatedAt: new Date().toISOString()
-        }
-      ])
-    );
+export const chatRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariables> }>()
+  .use("*", requireAuth)
+  .get("/", async (context) => {
+    const userId = context.get("userId")!;
+    const chats = await listChats(context.env, userId);
+
+    return context.json(createOk(chats));
   })
-  .get("/:id/messages", (context) => {
-    return context.json(
-      createOk({
-        conversationId: context.req.param("id"),
-        messages: [
-          {
-            id: "m1",
-            senderType: "user",
-            content: "你说的微小东西，我最近想到的是便利店门口的热豆浆。",
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: "m2",
-            senderType: "user",
-            content: "这很具体，也很温暖。我最近是下班路上的风。",
-            createdAt: new Date().toISOString()
-          }
-        ]
-      })
-    );
+  .get("/:id/messages", async (context) => {
+    const userId = context.get("userId")!;
+    const messages = await getConversationMessages(context.env, userId, context.req.param("id"));
+
+    return context.json(createOk(messages));
   })
   .post("/:id/messages", async (context) => {
+    const userId = context.get("userId")!;
     const input = SendMessageSchema.parse({
       ...(await context.req.json()),
       conversationId: context.req.param("id")
     });
+    const message = await sendChatMessage(context.env, userId, input);
 
-    return context.json(
-      createOk({
-        id: crypto.randomUUID(),
-        conversationId: input.conversationId,
-        content: input.content,
-        createdAt: new Date().toISOString()
-      })
-    );
+    return context.json(createOk(message));
   })
-  .delete("/:id", (context) => {
-    return context.json(
-      createOk({
-        conversationId: context.req.param("id"),
-        deleted: true
-      })
-    );
+  .delete("/:id", async (context) => {
+    const userId = context.get("userId")!;
+    const result = await deleteConversation(context.env, userId, context.req.param("id"));
+
+    return context.json(createOk(result));
   });

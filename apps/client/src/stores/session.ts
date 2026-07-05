@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import {
+  type BottleQuota,
   DAILY_PICK_LIMIT,
   DAILY_THROW_LIMIT,
   type AuthSession,
@@ -40,6 +41,9 @@ export const useSessionStore = defineStore("session", {
         pickRemaining,
         throwRemaining
       };
+    },
+    applyQuota(quota: BottleQuota) {
+      this.setQuotas(quota.pickRemaining, quota.throwRemaining);
     },
     async loginWithWechatCode(code: string) {
       const session = await apiRequest<AuthSession>("/v1/auth/wechat", {

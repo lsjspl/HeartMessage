@@ -26,7 +26,29 @@
         </el-table-column>
         <el-table-column label="注册时间" min-width="180">
           <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'active'"
+              type="danger"
+              link
+              :loading="updatingId === row.id"
+              @click="updateStatus(row.id, 'disabled')"
+            >
+              禁用
+            </el-button>
+            <el-button
+              v-else-if="row.status === 'disabled'"
+              type="primary"
+              link
+              :loading="updatingId === row.id"
+              @click="updateStatus(row.id, 'active')"
+            >
+              恢复
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -37,21 +59,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
+import type { AdminUserListItem, AdminUserStatusUpdateInput } from "@heart-message/shared";
 import { adminRequest } from "../services/api";
 
-interface AdminUserRow {
-  id: string;
-  role: string;
-  status: string;
-  created_at: number;
-  nickname: string | null;
-  avatar_url: string | null;
-}
-
 const loading = ref(false);
-const users = ref<AdminUserRow[]>([]);
+const updatingId = ref("");
+const users = ref<AdminUserListItem[]>([]);
 
-function formatTime(value: number) {
+function formatTime(value: string) {
   return new Date(value).toLocaleString();
 }
 
@@ -59,11 +74,28 @@ async function loadUsers() {
   loading.value = true;
 
   try {
-    users.value = await adminRequest<AdminUserRow[]>("/users");
+    users.value = await adminRequest<AdminUserListItem[]>("/users");
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "加载用户失败");
   } finally {
     loading.value = false;
+  }
+}
+
+async function updateStatus(id: string, status: AdminUserStatusUpdateInput["status"]) {
+  updatingId.value = id;
+
+  try {
+    await adminRequest(`/users/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    });
+    ElMessage.success(status === "active" ? "用户已恢复" : "用户已禁用");
+    await loadUsers();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "更新用户状态失败");
+  } finally {
+    updatingId.value = "";
   }
 }
 

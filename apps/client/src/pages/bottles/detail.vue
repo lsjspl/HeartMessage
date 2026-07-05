@@ -1,32 +1,165 @@
 <template>
   <view class="screen">
-    <text class="title">你捡到一个瓶子</text>
-    <text class="subtitle">来自 3 小时前的海面。</text>
+    <text class="title">{{ bottle ? "你打开了一个瓶子" : "瓶子" }}</text>
+    <text class="subtitle">{{ subtitle }}</text>
 
-    <view class="card letter-card">
-      <view class="author-row">
-        <view class="avatar">乔</view>
-        <view>
-          <text class="author-name">乔木</text>
-          <text class="author-meta">27 岁 · 保密 · 城市夜行者</text>
-        </view>
+    <view v-if="!bottle" class="card empty-card">
+      <text class="empty-title">还没有打开的瓶子</text>
+      <text class="empty-text">可以先去海面捡一个，也可以扔出自己的瓶子。</text>
+      <view class="action-grid">
+        <button class="secondary-button" @click="goThrow">扔瓶子</button>
+        <button class="primary-button" :disabled="isLoading" @click="pickNewBottle">
+          {{ isLoading ? "正在打捞" : "捡瓶子" }}
+        </button>
       </view>
-      <text class="letter-text">
-        如果你也刚好睡不着，可以告诉我一个最近支撑你的微小东西吗？我想收集一些不太响亮、但真的有用的答案。
-      </text>
     </view>
 
-    <view class="action-grid">
-      <button class="danger-button">删除</button>
-      <button class="primary-button" @click="reply">回复</button>
+    <view v-else class="card letter-card">
+      <view class="author-row">
+        <view class="avatar">{{ bottle.author.nickname.slice(0, 1) }}</view>
+        <view>
+          <text class="author-name">{{ bottle.author.nickname }}</text>
+          <text class="author-meta">{{ authorMeta }}</text>
+        </view>
+      </view>
+      <text class="letter-text">{{ bottle.content }}</text>
+    </view>
+
+    <view v-if="bottle?.pickupId" class="reply-card card">
+      <textarea class="textarea" v-model="replyContent" placeholder="写下你的回复..." />
+    </view>
+
+    <view v-if="bottle" class="action-grid">
+      <button v-if="bottle.pickupId" class="danger-button" @click="removeBottle">删除</button>
+      <button v-if="bottle.pickupId" class="primary-button" :disabled="isReplying" @click="reply">
+        {{ isReplying ? "发送中" : "回复" }}
+      </button>
+      <button v-else class="secondary-button" @click="goThrow">继续扔瓶子</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-function reply() {
+import { onLoad } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import type { BottleView } from "@heart-message/shared";
+import { deleteBottle, fetchBottleDetail, pickBottle, replyBottle } from "../../services/bottles";
+import { useSessionStore } from "../../stores/session";
+
+const bottle = ref<BottleView | null>(null);
+const replyContent = ref("");
+const isLoading = ref(false);
+const isReplying = ref(false);
+const session = useSessionStore();
+
+const subtitle = computed(() => {
+  if (!bottle.value) {
+    return "从这里打开你刚捡到或刚扔出的瓶子。";
+  }
+
+  return bottle.value.pickupId ? "来自今日海面的漂流瓶。" : "这是你刚扔出的瓶子。";
+});
+
+const authorMeta = computed(() => {
+  if (!bottle.value) {
+    return "";
+  }
+
+  const age = bottle.value.author.age ? `${bottle.value.author.age} 岁` : "年龄未知";
+  const genderMap = {
+    male: "男",
+    female: "女",
+    unknown: "保密"
+  };
+
+  return `${age} · ${genderMap[bottle.value.author.gender]}`;
+});
+
+onLoad(async (query) => {
+  const id = typeof query?.id === "string" ? query.id : "";
+
+  if (id) {
+    await loadBottle(id);
+  }
+});
+
+async function loadBottle(id: string) {
+  isLoading.value = true;
+
+  try {
+    bottle.value = await fetchBottleDetail(id);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "瓶子不存在",
+      icon: "none"
+    });
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function pickNewBottle() {
+  isLoading.value = true;
+
+  try {
+    const result = await pickBottle();
+    bottle.value = result.bottle;
+    session.applyQuota(result.quota);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "暂时没有捡到瓶子",
+      icon: "none"
+    });
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function reply() {
+  if (!bottle.value || isReplying.value) {
+    return;
+  }
+
+  isReplying.value = true;
+
+  try {
+    const result = await replyBottle(bottle.value.id, replyContent.value);
+    uni.redirectTo({
+      url: `/pages/chats/detail?id=${result.conversationId}`
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "回复失败",
+      icon: "none"
+    });
+  } finally {
+    isReplying.value = false;
+  }
+}
+
+async function removeBottle() {
+  if (!bottle.value) {
+    return;
+  }
+
+  try {
+    await deleteBottle(bottle.value.id);
+    bottle.value = null;
+    uni.showToast({
+      title: "已删除",
+      icon: "success"
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "删除失败",
+      icon: "none"
+    });
+  }
+}
+
+function goThrow() {
   uni.navigateTo({
-    url: "/pages/chats/detail?id=demo-conversation"
+    url: "/pages/bottles/throw"
   });
 }
 </script>
@@ -36,6 +169,28 @@ function reply() {
   margin: 36rpx 0 28rpx;
   background: #fffaf0;
   border-color: #ecd9bd;
+}
+
+.empty-card,
+.reply-card {
+  margin: 36rpx 0 28rpx;
+}
+
+.empty-title,
+.empty-text {
+  display: block;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.empty-text {
+  margin: 12rpx 0 28rpx;
+  color: #65758b;
+  font-size: 26rpx;
+  line-height: 1.6;
 }
 
 .author-row {

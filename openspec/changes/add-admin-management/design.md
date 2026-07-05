@@ -1,0 +1,47 @@
+# 后台管理与 AI 模型配置设计
+
+## 管理员登录
+
+第一阶段使用环境变量配置后台管理员账号密码：
+
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+
+本地 wrangler 配置写入明显的本地占位值。生产环境必须由 Cloudflare 环境变量或 Secret 提供真实值。服务端不在代码中静默兜底管理员密码。
+
+登录成功后复用现有 HMAC token 服务签发 `role = admin` 的 token，过期时间缩短为 12 小时。后台请求通过 `Authorization: Bearer <token>` 访问。
+
+## 鉴权边界
+
+- `/admin/auth/login` 公开。
+- `/admin/auth/me` 和其他 `/admin/*` 必须要求 `role = admin`。
+- 演示请求头 `x-demo-user-id` 不得让后台接口绕过 admin 登录。
+
+## 系统参数
+
+系统参数保存在 `CONFIG_KV`，key 为 `system-settings`。当 KV 没有值时返回显式默认配置：
+
+- 每日捡瓶限制。
+- 每日扔瓶限制。
+- AI 补位开关。
+- AI 补位批量大小。
+- AI 用途绑定。
+
+保存参数时校验共享 schema，并写入操作日志。后续瓶子额度服务读取该配置，避免后台配置只是摆设。
+
+## AI 供应商和模型
+
+供应商和模型继续使用已有 D1 表：
+
+- `ai_providers`：供应商名称、baseUrl、密钥环境变量名、启用状态。
+- `ai_models`：展示名、模型名、用途、启用状态、模型参数 JSON。
+
+后台可以新增或更新模型。业务代码不直接硬编码供应商；后续 AI 生成瓶子和聊天回复必须通过用途绑定选择模型。
+
+## 日志
+
+操作日志写入 `operation_logs`。日志 metadata 只记录结构化摘要，不记录 token、API key、openid、完整聊天正文或生产密钥。后台日志页展示最近日志。
+
+## 前端
+
+管理后台增加登录页。未登录访问后台页面时跳转登录；登录后 token 保存在 localStorage。参数页、AI 模型页和日志页都接真实 API。

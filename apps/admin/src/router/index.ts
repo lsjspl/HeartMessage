@@ -1,13 +1,21 @@
 import { createRouter, createWebHistory } from "vue-router";
 import DashboardView from "../views/DashboardView.vue";
-import PlaceholderView from "../views/PlaceholderView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import AiModelsView from "../views/AiModelsView.vue";
+import BottlesView from "../views/BottlesView.vue";
+import LoginView from "../views/LoginView.vue";
+import LogsView from "../views/LogsView.vue";
 import UsersView from "../views/UsersView.vue";
+import { getAdminToken } from "../services/api";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: "/login",
+      component: LoginView,
+      meta: { public: true }
+    },
     {
       path: "/",
       component: DashboardView
@@ -26,13 +34,23 @@ export const router = createRouter({
     },
     {
       path: "/bottles",
-      component: PlaceholderView,
-      props: { title: "瓶子管理", description: "审核瓶子、查看生命周期、处理删除和拦截记录。" }
+      component: BottlesView
     },
     {
       path: "/logs",
-      component: PlaceholderView,
-      props: { title: "日志中心", description: "查询管理操作、AI 调用、接口错误和风控事件。" }
+      component: LogsView
     }
   ]
+});
+
+router.beforeEach((to) => {
+  if (to.meta.public) {
+    return true;
+  }
+
+  if (!getAdminToken()) {
+    return "/login";
+  }
+
+  return true;
 });

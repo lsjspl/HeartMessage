@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev:client": "pnpm --filter @heart-message/client dev:h5",
     "dev:admin": "pnpm --filter @heart-message/admin dev",
@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "@fission-ai/openspec": "^1.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   }
 }

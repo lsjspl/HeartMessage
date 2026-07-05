@@ -1,43 +1,85 @@
 <template>
-  <view class="screen">
-    <view class="home-head">
-      <view>
-        <text class="title">今日海面</text>
-        <text class="subtitle">有人把心事放进了瓶子</text>
-      </view>
-      <view class="avatar">林</view>
-    </view>
+  <view class="home-page weather-sunny" :class="{ searching: pickPhase === 'searching' }">
+    <OceanScene :phase="pickPhase" :disabled="pickDisabled" @pick="pickBottle" />
 
-    <view class="quota-grid">
-      <view class="card quota-card">
-        <text class="quota-number">{{ session.quotas.pickRemaining }}</text>
-        <text class="quota-label">可捡瓶子</text>
+    <view class="home-content">
+      <view class="topbar">
+        <view class="brand-block">
+          <text class="brand">HeartMessage</text>
+          <text class="brand-subtitle">今日海面</text>
+        </view>
+        <view class="top-actions">
+          <text class="quota-chip">可捡 {{ session.quotas.pickRemaining }} 封</text>
+          <button class="throw-top-button" hover-class="none" @click="throwBottle">投信</button>
+        </view>
       </view>
-      <view class="card quota-card">
-        <text class="quota-number">{{ session.quotas.throwRemaining }}</text>
-        <text class="quota-label">可扔瓶子</text>
+
+      <view class="hero-layout">
+        <view class="hero-copy">
+          <text class="kicker">{{ displayName }}，潮水把远方送来了</text>
+          <text class="headline">捡起一封漂来的心事</text>
+          <text class="subline">海面正在发光，故事会顺着浪花靠近。这里适合慢慢读，也适合把没说完的话交给风。</text>
+        </view>
       </view>
-    </view>
 
-    <view class="sea-card">
-      <view class="bottle" />
-      <view class="wave" />
-    </view>
+      <view class="shore-actions">
+        <view class="tide-whisper">
+          <view class="pulse-dot" />
+          <view class="whisper-copy">
+            <text class="whisper-title">{{ pickStatusText }}</text>
+            <text class="whisper-subtitle">今日还可捡 {{ session.quotas.pickRemaining }} 封</text>
+          </view>
+        </view>
 
-    <view class="action-grid">
-      <button class="primary-button" @click="pickBottle">捡瓶子</button>
-      <button class="secondary-button" @click="throwBottle">扔瓶子</button>
+        <view class="shore-buttons">
+          <button class="pick-button" hover-class="none" :disabled="pickDisabled" @click="pickBottle">
+            {{ pickButtonText }}
+          </button>
+          <button class="throw-button" hover-class="none" @click="throwBottle">写信</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import OceanScene from "./components/OceanScene.vue";
+import { fetchBottleQuota, pickBottle as requestPickBottle } from "../../services/bottles";
 import { useSessionStore } from "../../stores/session";
 
 const session = useSessionStore();
+const pickPhase = ref<"idle" | "searching">("idle");
+
+const displayName = computed(() => session.profile?.nickname || "海面旅人");
+const pickDisabled = computed(() => pickPhase.value === "searching" || session.quotas.pickRemaining <= 0);
+const pickButtonText = computed(() => {
+  if (pickPhase.value === "searching") {
+    return "靠岸中";
+  }
+
+  if (session.quotas.pickRemaining <= 0) {
+    return "明天来";
+  }
+
+  return "捞瓶子";
+});
+const pickStatusText = computed(() => {
+  if (pickPhase.value === "searching") {
+    return "浪花正在把瓶子推近岸边";
+  }
+
+  if (session.quotas.pickRemaining <= 0) {
+    return "今天的潮汐已经安静下来";
+  }
+
+  return "海面上还有新的故事";
+});
 
 onShow(async () => {
+  uni.hideTabBar({ animation: false });
+
   if (!session.isLoggedIn) {
     uni.navigateTo({
       url: "/pages/auth/login"
@@ -46,14 +88,56 @@ onShow(async () => {
   }
 
   if (!session.hasProfile) {
-    await session.fetchCurrentUser().catch(() => null);
+    await loadCurrentUser();
   }
+
+  await refreshQuota();
 });
 
-function pickBottle() {
-  uni.navigateTo({
-    url: "/pages/bottles/detail?id=demo-bottle"
+async function loadCurrentUser() {
+  try {
+    await session.fetchCurrentUser();
+  } catch (error) {
+    showToast(getErrorMessage(error, "无法更新用户资料"));
+  }
+}
+
+async function refreshQuota() {
+  try {
+    const quota = await fetchBottleQuota();
+    session.applyQuota(quota);
+  } catch (error) {
+    showToast(getErrorMessage(error, "无法刷新今日额度"));
+  }
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
   });
+}
+
+async function pickBottle() {
+  if (pickDisabled.value) {
+    return;
+  }
+
+  pickPhase.value = "searching";
+  const animation = wait(1250);
+
+  try {
+    const result = await requestPickBottle();
+    await animation;
+    session.applyQuota(result.quota);
+    uni.navigateTo({
+      url: `/pages/bottles/detail?id=${result.bottle.id}`
+    });
+  } catch (error) {
+    await animation;
+    showToast(getErrorMessage(error, "暂时没有捡到瓶子"));
+  } finally {
+    pickPhase.value = "idle";
+  }
 }
 
 function throwBottle() {
@@ -61,88 +145,412 @@ function throwBottle() {
     url: "/pages/bottles/throw"
   });
 }
+
+function showToast(title: string) {
+  uni.showToast({
+    title,
+    icon: "none"
+  });
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 </script>
 
 <style scoped lang="scss">
-.home-head,
-.quota-grid,
-.action-grid {
-  display: flex;
-  gap: 20rpx;
+.home-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  color: #133852;
+  background: #bfeef0;
 }
 
-.home-head {
+.home-content {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 32rpx;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  pointer-events: auto;
+}
+
+.brand,
+.brand-subtitle,
+.quota-chip,
+.kicker,
+.headline,
+.subline,
+.whisper-title,
+.whisper-subtitle {
+  display: block;
+}
+
+.brand-block {
+  padding-top: 4rpx;
+}
+
+.brand {
+  color: #0d334f;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.brand-subtitle {
+  margin-top: 8rpx;
+  color: rgba(19, 56, 82, 0.62);
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.quota-chip {
+  min-width: 140rpx;
+  padding: 10rpx 18rpx;
+  color: rgba(13, 51, 79, 0.76);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1rpx solid rgba(255, 255, 255, 0.72);
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 900;
+  text-align: center;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12rpx 34rpx rgba(34, 94, 124, 0.1);
+}
+
+.throw-top-button {
+  height: 58rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  color: #ffffff;
+  background: rgba(14, 119, 149, 0.78);
+  border: 1rpx solid rgba(255, 255, 255, 0.38);
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 58rpx;
+  box-shadow: 0 14rpx 30rpx rgba(18, 117, 146, 0.18);
+}
+
+.hero-layout {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  padding-top: 72rpx;
+  box-sizing: border-box;
+}
+
+.hero-copy {
+  max-width: 690rpx;
+  pointer-events: none;
+}
+
+.kicker {
+  color: rgba(13, 51, 79, 0.72);
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.headline {
+  margin-top: 16rpx;
+  color: #0e3654;
+  font-size: 68rpx;
+  font-weight: 900;
+  line-height: 1.06;
+  text-shadow: 0 8rpx 34rpx rgba(255, 255, 255, 0.56);
+}
+
+.subline {
+  max-width: 640rpx;
+  margin-top: 22rpx;
+  color: rgba(15, 60, 84, 0.72);
+  font-size: 27rpx;
+  line-height: 1.68;
+  text-shadow: 0 4rpx 22rpx rgba(255, 255, 255, 0.5);
+}
+
+.shore-actions {
+  display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20rpx;
+  width: 100%;
+  padding-bottom: 28rpx;
+  box-sizing: border-box;
+  pointer-events: auto;
 }
 
-.avatar {
+.tide-whisper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 14rpx;
+  padding: 14rpx 18rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1rpx solid rgba(255, 255, 255, 0.68);
+  border-radius: 999rpx;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18rpx 44rpx rgba(31, 92, 112, 0.12);
+}
+
+.pulse-dot {
+  flex: 0 0 auto;
+  width: 18rpx;
+  height: 18rpx;
+  background: #ef7653;
+  border-radius: 999rpx;
+  box-shadow: 0 0 0 10rpx rgba(239, 118, 83, 0.14);
+  animation: pulseDot 2.2s ease-in-out infinite;
+}
+
+.whisper-copy {
+  min-width: 0;
+}
+
+.whisper-title {
+  overflow: hidden;
+  color: #123852;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whisper-subtitle {
+  margin-top: 5rpx;
+  color: rgba(18, 56, 82, 0.6);
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.shore-buttons {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 12rpx;
+}
+
+.pick-button,
+.throw-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  font-size: 25rpx;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 72rpx;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pick-button {
   color: #ffffff;
-  background: linear-gradient(135deg, #0f8f8c, #a18cd1);
-  border-radius: 999rpx;
-  font-weight: 900;
+  background: linear-gradient(135deg, #0c8aa2, #105c87);
+  border: 0;
+  box-shadow: 0 18rpx 32rpx rgba(14, 112, 146, 0.24);
 }
 
-.quota-grid {
-  margin: 36rpx 0 24rpx;
+.throw-button {
+  color: #17445a;
+  background: rgba(255, 255, 255, 0.64);
+  border: 1rpx solid rgba(23, 68, 90, 0.1);
+  box-shadow: 0 16rpx 32rpx rgba(31, 92, 112, 0.1);
 }
 
-.quota-card {
-  flex: 1;
+.pick-button[disabled] {
+  opacity: 0.58;
 }
 
-.quota-number {
-  display: block;
-  font-size: 56rpx;
-  font-weight: 900;
+.searching .pick-button {
+  transform: translateY(-2rpx);
 }
 
-.quota-label {
-  color: #65758b;
-  font-size: 24rpx;
+@keyframes pulseDot {
+  0%,
+  100% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 8rpx rgba(239, 118, 83, 0.12);
+  }
+
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 16rpx rgba(239, 118, 83, 0.02);
+  }
 }
 
-.sea-card {
-  position: relative;
-  height: 520rpx;
-  overflow: hidden;
-  background: linear-gradient(180deg, #e7fbf8 0%, #85dbcf 50%, #0f8f8c 100%);
-  border-radius: 18rpx;
+@media screen and (min-width: 900px) {
+  .home-content {
+    width: min(100%, 1180px);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 34px 32px 42px;
+  }
+
+  .brand {
+    font-size: 19px;
+  }
+
+  .brand-subtitle {
+    margin-top: 5px;
+    font-size: 13px;
+  }
+
+  .quota-chip {
+    min-width: 92px;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  .throw-top-button {
+    height: 34px;
+    padding: 0 15px;
+    font-size: 13px;
+    line-height: 34px;
+  }
+
+  .hero-layout {
+    padding-top: 78px;
+  }
+
+  .hero-copy {
+    max-width: 690px;
+  }
+
+  .kicker {
+    font-size: 15px;
+  }
+
+  .headline {
+    max-width: 620px;
+    margin-top: 14px;
+    font-size: 64px;
+  }
+
+  .subline {
+    max-width: 520px;
+    margin-top: 20px;
+    font-size: 17px;
+  }
+
+  .shore-actions {
+    max-width: 720px;
+    padding-bottom: 0;
+  }
+
+  .tide-whisper {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .pulse-dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .whisper-title {
+    font-size: 14px;
+  }
+
+  .whisper-subtitle {
+    margin-top: 3px;
+    font-size: 12px;
+  }
+
+  .shore-buttons {
+    gap: 8px;
+  }
+
+  .pick-button,
+  .throw-button {
+    height: 42px;
+    padding: 0 20px;
+    font-size: 14px;
+    line-height: 42px;
+  }
 }
 
-.bottle {
-  position: absolute;
-  top: 180rpx;
-  left: 310rpx;
-  width: 96rpx;
-  height: 210rpx;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.12)),
-    #ffbe78;
-  border: 4rpx solid rgba(104, 70, 44, 0.22);
-  border-radius: 52rpx 52rpx 28rpx 28rpx;
-  transform: rotate(62deg);
-}
+@media screen and (max-width: 520px) {
+  .home-content {
+    padding: 28rpx 24rpx 22rpx;
+  }
 
-.wave {
-  position: absolute;
-  right: -40rpx;
-  bottom: 80rpx;
-  left: -40rpx;
-  height: 88rpx;
-  background: rgba(255, 255, 255, 0.34);
-  border-radius: 999rpx;
-}
+  .topbar {
+    align-items: flex-start;
+  }
 
-.action-grid {
-  margin-top: 28rpx;
-}
+  .top-actions {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8rpx;
+  }
 
-.action-grid button {
-  flex: 1;
+  .quota-chip {
+    min-width: 132rpx;
+  }
+
+  .hero-layout {
+    padding-top: 62rpx;
+  }
+
+  .headline {
+    font-size: 56rpx;
+  }
+
+  .subline {
+    max-width: 560rpx;
+    font-size: 25rpx;
+  }
+
+  .shore-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14rpx;
+    padding-bottom: 0;
+  }
+
+  .tide-whisper {
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .shore-buttons {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+    gap: 12rpx;
+  }
+
+  .pick-button,
+  .throw-button {
+    height: 76rpx;
+    padding: 0 24rpx;
+    font-size: 26rpx;
+    line-height: 76rpx;
+  }
 }
 </style>

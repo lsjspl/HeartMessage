@@ -1,5 +1,6 @@
 <template>
-  <el-container class="admin-shell">
+  <router-view v-if="$route.meta.public" />
+  <el-container v-else class="admin-shell">
     <el-aside class="admin-sidebar" width="232px">
       <div class="admin-brand">
         <span class="admin-brand__mark">H</span>
@@ -33,6 +34,10 @@
       </el-menu>
     </el-aside>
     <el-main class="admin-main">
+      <div class="admin-topbar">
+        <span>当前账号：{{ session.name }}</span>
+        <el-button size="small" @click="logout">退出</el-button>
+      </div>
       <router-view />
     </el-main>
   </el-container>
@@ -40,4 +45,14 @@
 
 <script setup lang="ts">
 import { Cpu, DataBoard, Document, MessageBox, Setting, User } from "@element-plus/icons-vue";
+import { useRouter } from "vue-router";
+import { useAdminSessionStore } from "./stores/admin-session";
+
+const router = useRouter();
+const session = useAdminSessionStore();
+
+async function logout() {
+  session.logout();
+  await router.replace("/login");
+}
 </script>

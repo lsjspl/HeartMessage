@@ -10,28 +10,47 @@
     </view>
 
     <view class="message-list">
-      <view v-for="item in conversations" :key="item.name" class="card message-item" @click="openChat">
-        <view class="avatar">{{ item.name.slice(0, 1) }}</view>
+      <view v-for="item in conversations" :key="item.id" class="card message-item" @click="openChat(item.id)">
+        <view class="avatar">{{ item.peer.nickname.slice(0, 1) }}</view>
         <view class="message-main">
-          <text class="message-name">{{ item.name }}</text>
+          <text class="message-name">{{ item.peer.nickname }}</text>
           <text class="message-preview">{{ item.preview }}</text>
         </view>
-        <text v-if="item.unread" class="badge">{{ item.unread }}</text>
+        <text v-if="item.unreadCount" class="badge">{{ item.unreadCount }}</text>
+      </view>
+      <view v-if="!conversations.length" class="card empty-card">
+        <text class="empty-text">还没有聊天。回复一个捡到的瓶子后，会话会出现在这里。</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-const conversations = [
-  { name: "乔木", preview: "风这个答案好自由。", unread: 2 },
-  { name: "夏迟", preview: "我刚刚看到你的瓶子。", unread: 1 },
-  { name: "海雾电台", preview: "今晚给你留了一段话。", unread: 0 }
-];
+import { onShow } from "@dcloudio/uni-app";
+import { ref } from "vue";
+import type { ChatListItem } from "@heart-message/shared";
+import { fetchChats } from "../../services/chats";
 
-function openChat() {
+const conversations = ref<ChatListItem[]>([]);
+
+onShow(async () => {
+  await loadChats();
+});
+
+async function loadChats() {
+  try {
+    conversations.value = await fetchChats();
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "聊天加载失败",
+      icon: "none"
+    });
+  }
+}
+
+function openChat(id: string) {
   uni.navigateTo({
-    url: "/pages/chats/detail?id=demo-conversation"
+    url: `/pages/chats/detail?id=${id}`
   });
 }
 </script>
@@ -120,5 +139,15 @@ function openChat() {
   border-radius: 999rpx;
   font-size: 22rpx;
   font-weight: 800;
+}
+
+.empty-card {
+  box-shadow: none;
+}
+
+.empty-text {
+  color: #65758b;
+  font-size: 26rpx;
+  line-height: 1.6;
 }
 </style>

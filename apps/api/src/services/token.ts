@@ -46,7 +46,15 @@ async function importKey(secret: string) {
 }
 
 function getSecret(env: Env) {
-  return env.AUTH_TOKEN_SECRET || "local-dev-secret-change-before-production";
+  if (env.AUTH_TOKEN_SECRET) {
+    return env.AUTH_TOKEN_SECRET;
+  }
+
+  if (env.ENVIRONMENT === "local" || env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") {
+    return "local-dev-secret-change-before-production";
+  }
+
+  throw new Error("AUTH_TOKEN_SECRET is not configured");
 }
 
 export async function signAuthToken(

@@ -1,6 +1,7 @@
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { createError } from "@heart-message/shared";
+import { AppError } from "../errors";
 
 export function toErrorResponse(error: unknown) {
   if (error instanceof ZodError) {
@@ -14,6 +15,13 @@ export function toErrorResponse(error: unknown) {
     return {
       status: error.status,
       body: createError("HTTP_ERROR", error.message)
+    };
+  }
+
+  if (error instanceof AppError) {
+    return {
+      status: error.status,
+      body: createError(error.code, error.message)
     };
   }
 

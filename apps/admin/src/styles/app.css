@@ -52,6 +52,46 @@ body {
   background: #f6f8fb;
 }
 
+.admin-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #65758b;
+  font-size: 13px;
+}
+
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #e9f8f6;
+}
+
+.login-panel {
+  width: 420px;
+  padding: 32px;
+  background: #ffffff;
+  border: 1px solid #d9e4e7;
+  border-radius: 8px;
+  box-shadow: 0 22px 60px rgba(20, 33, 61, 0.12);
+}
+
+.login-panel h1 {
+  margin: 0 0 8px;
+}
+
+.login-panel p {
+  margin: 0 0 24px;
+  color: #65758b;
+}
+
+.login-button {
+  width: 100%;
+}
+
 .page-head {
   display: flex;
   align-items: flex-start;
