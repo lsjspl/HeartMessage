@@ -16,9 +16,9 @@ SELECT
   '超级管理员',
   'super_admin',
   'active',
-  'RcSmEQrbK+svklY5xqPSr9Kh5BXHjLk8tMJpNmWRmeI=',
+  'PK0MDL0Pq62G2s4LwKNyfb/sf1rDO6zxLPrGLAV2YIU=',
   'SPqXFx5rFFY2xOSHmbT83g==',
-  120000,
+  100000,
   unixepoch() * 1000,
   unixepoch() * 1000
 WHERE NOT EXISTS (

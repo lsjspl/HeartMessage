@@ -9,6 +9,8 @@
     "dev:admin": "pnpm --filter @heart-message/admin dev",
     "dev:api": "pnpm --filter @heart-message/api dev",
     "build": "pnpm -r build",
+    "deploy:ci": "pnpm --filter @heart-message/api deploy:ci",
+    "deploy:api:ci": "pnpm --filter @heart-message/api deploy:ci",
     "typecheck": "pnpm -r typecheck",
     "openspec": "openspec",
     "spec:status": "node scripts/openspec-status.mjs",

@@ -48,6 +48,16 @@ pnpm --filter @heart-message/api deploy:ci
 
 `deploy:ci` 会按顺序执行 API build、远程 D1 migration 和 Worker 部署。推送到 GitHub 后会自动应用未执行过的 migration，不要再手动去 D1 Console 粘贴 SQL。
 
+如果 Cloudflare Worker 项目的 Root directory 留空，也可以把 Deploy command 填为：
+
+```bash
+pnpm deploy:ci
+```
+
+根目录脚本会转到 `@heart-message/api` 执行同一套流程。不要填 `pnpm deploy`，否则只会部署 Worker，不会自动执行远程 D1 migration。
+
+如果 `/health` 正常但 `/admin/auth/login` 返回 `INTERNAL_ERROR`，优先检查本次部署是否执行了 `deploy:ci`。登录接口会查询 D1 的 `admin_accounts` 表；远程 migration 没跑时，即使 Worker 在线也会登录失败。
+
 ## 后台系统配置
 
 API 自动部署不得通过 Cloudflare 构建环境变量维护运行环境、CORS 白名单、Token 签名密钥、微信配置或 AI Key。
