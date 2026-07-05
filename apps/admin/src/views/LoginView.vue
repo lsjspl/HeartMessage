@@ -26,8 +26,8 @@ const router = useRouter();
 const session = useAdminSessionStore();
 const loading = ref(false);
 const form = reactive({
-  username: "local-admin",
-  password: "local-admin-password-change-before-production"
+  username: "admin",
+  password: "123456"
 });
 
 async function submit() {

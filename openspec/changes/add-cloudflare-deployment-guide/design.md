@@ -17,7 +17,7 @@
   - KV namespace ID
   - R2 bucket
   - Queue 名称
-- CORS 白名单、管理员初始化账号密码、微信配置、Token 密钥和 AI Key 必须在后台系统配置或敏感配置中维护，不写入 `wrangler vars`。
+- CORS 白名单、微信配置、Token 密钥和 AI Key 必须在后台系统配置或敏感配置中维护，不写入 `wrangler vars`。默认超级管理员由 D1 migration 创建。
 
 ## 安全
 

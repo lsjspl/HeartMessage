@@ -9,7 +9,7 @@ import { writeOperationLog } from "../services/logs";
 export const adminAuthRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariables> }>()
   .post("/login", async (context) => {
     const input = AdminLoginSchema.parse(await context.req.json());
-    const session = await loginAdmin(context.env, input, new URL(context.req.url).hostname);
+    const session = await loginAdmin(context.env, input);
 
     await writeOperationLog(context.env, {
       actorId: `admin:${input.username}`,

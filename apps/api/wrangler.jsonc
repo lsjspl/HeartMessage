@@ -11,14 +11,14 @@
     {
       "binding": "DB",
       "database_name": "heart-message-db",
-      "database_id": "replace-with-cloudflare-d1-id",
+      "database_id": "766c93d2-8307-4267-8dc3-9be747e7c9c7",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "CONFIG_KV",
-      "id": "replace-with-config-kv-id"
+      "id": "38c41634ee8543ce8aa6ad9d98d81401"
     }
   ],
   "r2_buckets": [

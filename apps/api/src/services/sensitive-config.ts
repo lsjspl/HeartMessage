@@ -12,8 +12,6 @@ const SENSITIVE_CONFIG_KEY = "system-sensitive-config";
 
 const CONFIG_DEFINITIONS: Array<{ key: SensitiveConfigKey; label: string }> = [
   { key: "AUTH_TOKEN_SECRET", label: "登录 Token 签名密钥" },
-  { key: "ADMIN_USERNAME", label: "首次超级管理员账号" },
-  { key: "ADMIN_PASSWORD", label: "首次超级管理员密码" },
   { key: "LOCAL_TEST_MODEL_API_KEY", label: "本地测试 AI Key" },
   { key: "WECHAT_APP_ID", label: "微信 App ID" },
   { key: "WECHAT_APP_SECRET", label: "微信 App Secret" }
@@ -21,8 +19,6 @@ const CONFIG_DEFINITIONS: Array<{ key: SensitiveConfigKey; label: string }> = [
 
 const LOCAL_DEFAULTS: Partial<Record<SensitiveConfigKey, string>> = {
   AUTH_TOKEN_SECRET: "local-dev-secret-change-before-production",
-  ADMIN_USERNAME: "local-admin",
-  ADMIN_PASSWORD: "local-admin-password-change-before-production",
   LOCAL_TEST_MODEL_API_KEY: "local-fake-ai-key"
 };
 

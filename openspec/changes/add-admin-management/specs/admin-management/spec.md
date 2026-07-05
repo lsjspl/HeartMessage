@@ -4,6 +4,13 @@
 
 系统 MUST 提供后台管理员登录能力，并返回仅允许访问后台接口的 admin token。
 
+#### Scenario: 数据库迁移创建默认管理员
+
+- **WHEN** 部署数据库 migration
+- **THEN** 系统 MUST 创建默认超级管理员账号 `admin`
+- **AND** 默认密码 MUST 为 `123456`
+- **AND** 默认管理员不得依赖 KV、`wrangler vars` 或部署 Secret 创建。
+
 #### Scenario: 管理员使用正确账号密码登录
 
 - **WHEN** 管理员提交正确的账号和密码
@@ -97,7 +104,7 @@
 
 ### Requirement: 敏感配置管理
 
-系统 MUST 提供后台敏感配置管理能力，用于维护 Token 密钥、首次管理员账号密码、微信配置和 AI Key 等敏感值。
+系统 MUST 提供后台敏感配置管理能力，用于维护 Token 密钥、微信配置和 AI Key 等敏感值。
 
 #### Scenario: 管理员查看敏感配置
 
