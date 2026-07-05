@@ -100,6 +100,7 @@
 
 - **WHEN** 管理员在系统参数页修改 CORS 白名单
 - **THEN** 后续跨域请求 MUST 使用后台保存的白名单判断
+- **AND** 当后台保存 `*` 时 MUST 允许任意请求来源
 - **AND** 不得继续读取 `wrangler vars` 中的 CORS 业务配置。
 
 ### Requirement: 敏感配置管理

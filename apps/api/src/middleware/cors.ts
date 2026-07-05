@@ -12,6 +12,10 @@ export async function resolveCorsOrigin(origin: string, context: Context<{ Bindi
   const settings = await getSystemSettings(context.env);
   const configuredOrigins = settings.runtime.corsOrigins;
 
+  if (configuredOrigins.includes("*")) {
+    return origin;
+  }
+
   if (configuredOrigins.length > 0) {
     return configuredOrigins.includes(origin) ? origin : null;
   }

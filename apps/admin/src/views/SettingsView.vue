@@ -34,7 +34,7 @@
               v-model="corsOriginsText"
               type="textarea"
               :rows="4"
-              placeholder="每行一个域名，例如 http://localhost:5175"
+              placeholder="填 * 表示允许所有来源；或每行一个域名"
             />
           </el-form-item>
         </el-form>
@@ -98,8 +98,8 @@ const saving = ref(false);
 const corsOriginsText = ref("");
 const settings = reactive<SystemSettings>({
   runtime: {
-    environment: "local",
-    corsOrigins: []
+    environment: "production",
+    corsOrigins: ["*"]
   },
   dailyPickLimit: DAILY_PICK_LIMIT,
   dailyThrowLimit: DAILY_THROW_LIMIT,

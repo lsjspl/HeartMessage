@@ -11,16 +11,7 @@ const SETTINGS_KEY = "system-settings";
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   runtime: {
     environment: "production",
-    corsOrigins: [
-      "https://heart-message-admin.pages.dev",
-      "https://heart-message-client.pages.dev",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:5174",
-      "http://127.0.0.1:5174",
-      "http://localhost:5175",
-      "http://127.0.0.1:5175"
-    ]
+    corsOrigins: ["*"]
   },
   dailyPickLimit: DAILY_PICK_LIMIT,
   dailyThrowLimit: DAILY_THROW_LIMIT,

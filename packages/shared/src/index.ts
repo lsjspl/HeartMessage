@@ -421,7 +421,7 @@ export type RuntimeEnvironment = z.infer<typeof RuntimeEnvironmentSchema>;
 
 export const SystemRuntimeSettingsSchema = z.object({
   environment: RuntimeEnvironmentSchema,
-  corsOrigins: z.array(z.string().url()).max(50)
+  corsOrigins: z.array(z.union([z.literal("*"), z.string().url()])).max(50)
 });
 export type SystemRuntimeSettings = z.infer<typeof SystemRuntimeSettingsSchema>;
 
