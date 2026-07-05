@@ -9,13 +9,29 @@ import type { Env } from "../env";
 const SETTINGS_KEY = "system-settings";
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
+  runtime: {
+    environment: "local",
+    corsOrigins: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "http://localhost:5175",
+      "http://127.0.0.1:5175"
+    ]
+  },
   dailyPickLimit: DAILY_PICK_LIMIT,
   dailyThrowLimit: DAILY_THROW_LIMIT,
   bottleExpires: "end_of_day",
   aiFallbackEnabled: true,
   aiTrigger: "empty_pool",
   aiBatchSize: 20,
-  aiBindings: {}
+  aiBindings: {},
+  userProfileEvaluation: {
+    enabled: true,
+    intervalHours: 24,
+    batchSize: 20
+  }
 };
 
 export async function getSystemSettings(env: Env): Promise<SystemSettings> {
@@ -25,9 +41,23 @@ export async function getSystemSettings(env: Env): Promise<SystemSettings> {
     return DEFAULT_SYSTEM_SETTINGS;
   }
 
+  const parsed = JSON.parse(stored) as Partial<SystemSettings>;
+
   return SystemSettingsSchema.parse({
     ...DEFAULT_SYSTEM_SETTINGS,
-    ...(JSON.parse(stored) as Record<string, unknown>)
+    ...parsed,
+    runtime: {
+      ...DEFAULT_SYSTEM_SETTINGS.runtime,
+      ...(parsed.runtime ?? {})
+    },
+    aiBindings: {
+      ...DEFAULT_SYSTEM_SETTINGS.aiBindings,
+      ...(parsed.aiBindings ?? {})
+    },
+    userProfileEvaluation: {
+      ...DEFAULT_SYSTEM_SETTINGS.userProfileEvaluation,
+      ...(parsed.userProfileEvaluation ?? {})
+    }
   });
 }
 

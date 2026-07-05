@@ -39,6 +39,6 @@
 
 #### Scenario: 生产环境缺少 token secret
 
-- **WHEN** 生产环境没有配置 `AUTH_TOKEN_SECRET`
+- **WHEN** 生产环境没有在后台敏感配置中配置 `AUTH_TOKEN_SECRET`
 - **THEN** API MUST 拒绝签发或校验 token
 - **AND** 不得使用本地开发 fallback secret。

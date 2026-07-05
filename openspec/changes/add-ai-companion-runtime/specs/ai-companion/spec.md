@@ -9,7 +9,7 @@
 - **WHEN** 业务请求 `persona_generation`、`bottle_generation` 或 `chat_reply` 用途的模型
 - **THEN** 系统 MUST 读取系统参数中的用途绑定
 - **AND** 查询 D1 中启用的模型和启用的供应商
-- **AND** 从供应商的密钥环境变量名读取真实 API Key。
+- **AND** 使用供应商的敏感配置键读取真实 API Key。
 
 #### Scenario: 用途未正确配置
 

@@ -2,86 +2,96 @@
   <section>
     <div class="page-head">
       <div>
-        <h1>AI 模型管理</h1>
-        <p>维护供应商、模型、用途和各用途绑定，不保存真实 API Key。</p>
+        <h1>AI 模型</h1>
+        <p>维护模型名称、用途和启用状态。</p>
       </div>
-      <el-button :loading="loading" @click="loadConfig">刷新</el-button>
     </div>
 
-    <div class="panel-grid">
-      <el-card shadow="never">
-        <h2 class="panel-title">供应商</h2>
-        <el-form label-width="120px">
-          <el-form-item label="名称">
-            <el-input v-model="providerForm.name" placeholder="OpenAI / DeepSeek / 通义千问" />
-          </el-form-item>
-          <el-form-item label="适配器">
-            <el-select v-model="providerForm.adapterType">
-              <el-option label="OpenAI 兼容" value="openai_compatible" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="Base URL">
-            <el-input v-model="providerForm.baseUrl" placeholder="https://api.example.com/v1" />
-          </el-form-item>
-          <el-form-item label="密钥变量">
-            <el-input v-model="providerForm.apiKeySecretName" placeholder="OPENAI_API_KEY" />
-          </el-form-item>
-          <el-form-item label="启用">
-            <el-switch v-model="providerForm.isEnabled" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="savingProvider" @click="saveProvider">保存供应商</el-button>
-          </el-form-item>
-        </el-form>
+    <el-card shadow="never">
+      <div class="table-toolbar">
+        <div class="table-filters">
+          <el-input v-model="filters.keyword" clearable placeholder="模型 ID / 名称" @keyup.enter="applyFilters" />
+          <el-select v-model="filters.providerId" clearable placeholder="供应商">
+            <el-option v-for="provider in providerOptions" :key="provider.id" :label="provider.name" :value="provider.id" />
+          </el-select>
+          <el-select v-model="filters.purpose" clearable placeholder="用途">
+            <el-option v-for="purpose in purposes" :key="purpose.value" :label="purpose.label" :value="purpose.value" />
+          </el-select>
+          <el-select v-model="filters.isEnabled" clearable placeholder="启用状态">
+            <el-option label="启用" value="true" />
+            <el-option label="停用" value="false" />
+          </el-select>
+          <div class="filter-actions">
+            <el-tooltip content="搜索">
+              <el-button circle :icon="Search" @click="applyFilters" />
+            </el-tooltip>
+            <el-tooltip content="重置筛选">
+              <el-button circle :icon="RefreshLeft" @click="resetFilters" />
+            </el-tooltip>
+          </div>
+        </div>
+        <div class="table-actions">
+          <el-tooltip content="新增">
+            <el-button circle type="primary" :icon="Plus" @click="openCreate" />
+          </el-tooltip>
+          <el-tooltip content="刷新">
+            <el-button circle :loading="loading" :icon="Refresh" @click="loadModels" />
+          </el-tooltip>
+          <el-tooltip content="取消多选">
+            <el-button circle :disabled="!selectedRows.length" :icon="Close" @click="clearSelection" />
+          </el-tooltip>
+        </div>
+      </div>
 
-        <el-table :data="config.providers" stripe>
-          <el-table-column prop="name" label="名称" />
-          <el-table-column prop="adapterType" label="适配器" width="150" />
-          <el-table-column prop="apiKeySecretName" label="密钥变量" />
-          <el-table-column label="启用" width="90">
-            <template #default="{ row }">
-              <el-tag :type="row.isEnabled ? 'success' : 'info'">{{ row.isEnabled ? "是" : "否" }}</el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+      <el-table
+        ref="tableRef"
+        v-loading="loading"
+        :data="models"
+        row-key="id"
+        stripe
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" />
+        <el-table-column type="index" label="序号" width="76" :index="indexMethod" />
+        <el-table-column prop="id" label="模型 ID" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="providerName" label="平台" width="140" />
+        <el-table-column prop="displayName" label="展示名" min-width="160" />
+        <el-table-column prop="modelName" label="模型名" min-width="180" show-overflow-tooltip />
+        <el-table-column label="用途" width="170">
+          <template #default="{ row }">
+            {{ purposeLabel(row.purpose) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="启用" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.isEnabled ? 'success' : 'info'">{{ row.isEnabled ? "是" : "否" }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="96" fixed="right">
+          <template #default="{ row }">
+            <el-tooltip content="编辑">
+              <el-button circle type="primary" :icon="Edit" @click="openEdit(row)" />
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.pageSize"
+        class="table-pagination"
+        :page-sizes="adminPageSizes"
+        :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="loadModels"
+      />
+    </el-card>
 
-      <el-card shadow="never">
-        <h2 class="panel-title">用途绑定</h2>
-        <el-form label-width="110px">
-          <el-form-item label="人格生成">
-            <el-select v-model="bindings.persona_generation" clearable>
-              <el-option v-for="model in config.models" :key="model.id" :label="model.displayName" :value="model.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="瓶子生成">
-            <el-select v-model="bindings.bottle_generation" clearable>
-              <el-option v-for="model in config.models" :key="model.id" :label="model.displayName" :value="model.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="聊天回复">
-            <el-select v-model="bindings.chat_reply" clearable>
-              <el-option v-for="model in config.models" :key="model.id" :label="model.displayName" :value="model.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="内容审核">
-            <el-select v-model="bindings.content_moderation" clearable>
-              <el-option v-for="model in config.models" :key="model.id" :label="model.displayName" :value="model.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="savingBindings" @click="saveBindings">保存绑定</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
-
-    <el-card shadow="never" class="model-panel">
-      <h2 class="panel-title">模型</h2>
-      <el-form class="model-form" label-width="110px">
+    <el-dialog v-model="dialogVisible" :title="modelForm.id ? '编辑模型' : '新增模型'" width="560px">
+      <el-form class="modal-form" label-width="110px">
         <el-form-item label="供应商">
           <el-select v-model="modelForm.providerId">
-            <el-option v-for="provider in config.providers" :key="provider.id" :label="provider.name" :value="provider.id" />
+            <el-option v-for="provider in providerOptions" :key="provider.id" :label="provider.name" :value="provider.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="展示名">
@@ -90,60 +100,66 @@
         <el-form-item label="模型名">
           <el-input v-model="modelForm.modelName" />
         </el-form-item>
-        <el-form-item label="用途">
+        <el-form-item label="用途类型">
           <el-select v-model="modelForm.purpose">
-            <el-option label="人格生成" value="persona_generation" />
-            <el-option label="瓶子生成" value="bottle_generation" />
-            <el-option label="聊天回复" value="chat_reply" />
-            <el-option label="内容审核" value="content_moderation" />
+            <el-option v-for="purpose in purposes" :key="purpose.value" :label="purpose.label" :value="purpose.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="启用">
           <el-switch v-model="modelForm.isEnabled" />
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="savingModel" @click="saveModel">保存模型</el-button>
-        </el-form-item>
       </el-form>
-
-      <el-table :data="config.models" stripe>
-        <el-table-column prop="providerName" label="平台" width="130" />
-        <el-table-column prop="displayName" label="展示名" />
-        <el-table-column prop="modelName" label="模型名" />
-        <el-table-column prop="purpose" label="用途" width="160" />
-        <el-table-column label="启用" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.isEnabled ? 'success' : 'info'">{{ row.isEnabled ? "是" : "否" }}</el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingModel" @click="saveModel">保存</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
-import type { AdminAiConfig, AiModelPurpose } from "@heart-message/shared";
+import { Close, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
+import type {
+  AdminAiConfig,
+  AdminAiModel,
+  AdminAiProvider,
+  AiModelPurpose,
+  PaginatedList
+} from "@heart-message/shared";
 import { adminRequest } from "../services/api";
+import {
+  adminPageSizes,
+  applyPagination,
+  createPaginationState,
+  listQuery
+} from "../services/pagination";
+
+const purposes: Array<{ label: string; value: AiModelPurpose }> = [
+  { label: "人格生成", value: "persona_generation" },
+  { label: "瓶子生成", value: "bottle_generation" },
+  { label: "聊天回复", value: "chat_reply" },
+  { label: "内容审核", value: "content_moderation" },
+  { label: "画像评估", value: "user_profile_evaluation" }
+];
 
 const loading = ref(false);
-const savingProvider = ref(false);
 const savingModel = ref(false);
-const savingBindings = ref(false);
-const config = reactive<AdminAiConfig>({
-  providers: [],
-  models: [],
-  bindings: {}
-});
-const providerForm = reactive({
-  name: "",
-  adapterType: "openai_compatible",
-  baseUrl: "",
-  apiKeySecretName: "",
-  isEnabled: true
+const dialogVisible = ref(false);
+const models = ref<AdminAiModel[]>([]);
+const providerOptions = ref<AdminAiProvider[]>([]);
+const selectedRows = ref<AdminAiModel[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
+const pagination = reactive(createPaginationState());
+const filters = reactive({
+  keyword: "",
+  providerId: "",
+  purpose: "",
+  isEnabled: ""
 });
 const modelForm = reactive({
+  id: "",
   providerId: "",
   displayName: "",
   modelName: "",
@@ -151,100 +167,110 @@ const modelForm = reactive({
   isEnabled: true,
   configJson: {}
 });
-const bindings = reactive<AdminAiConfig["bindings"]>({});
 
-onMounted(loadConfig);
+onMounted(async () => {
+  await loadProviderOptions();
+  await loadModels();
+});
 
-async function loadConfig() {
+function purposeLabel(value: AiModelPurpose) {
+  return purposes.find((purpose) => purpose.value === value)?.label ?? value;
+}
+
+function indexMethod(index: number) {
+  return (pagination.page - 1) * pagination.pageSize + index + 1;
+}
+
+function handleSelectionChange(rows: AdminAiModel[]) {
+  selectedRows.value = rows;
+}
+
+function clearSelection() {
+  tableRef.value?.clearSelection();
+}
+
+function resetModelForm() {
+  Object.assign(modelForm, {
+    id: "",
+    providerId: providerOptions.value[0]?.id ?? "",
+    displayName: "",
+    modelName: "",
+    purpose: "chat_reply",
+    isEnabled: true,
+    configJson: {}
+  });
+}
+
+function openCreate() {
+  resetModelForm();
+  dialogVisible.value = true;
+}
+
+function openEdit(row: AdminAiModel) {
+  Object.assign(modelForm, {
+    id: row.id,
+    providerId: row.providerId,
+    displayName: row.displayName,
+    modelName: row.modelName,
+    purpose: row.purpose,
+    isEnabled: row.isEnabled,
+    configJson: row.configJson
+  });
+  dialogVisible.value = true;
+}
+
+async function loadProviderOptions() {
+  const config = await adminRequest<AdminAiConfig>("/ai/config");
+  providerOptions.value = config.providers;
+}
+
+async function loadModels() {
   loading.value = true;
 
   try {
-    const data = await adminRequest<AdminAiConfig>("/ai/config");
-    Object.assign(config, data);
-    Object.assign(bindings, data.bindings);
+    const data = await adminRequest<PaginatedList<AdminAiModel>>(
+      `/ai/models?${listQuery(pagination, filters)}`
+    );
+    models.value = data.items;
+    applyPagination(pagination, data.pagination);
   } finally {
     loading.value = false;
   }
 }
 
-async function saveProvider() {
-  savingProvider.value = true;
+async function applyFilters() {
+  pagination.page = 1;
+  await loadModels();
+}
 
-  try {
-    const data = await adminRequest<AdminAiConfig>("/ai/providers", {
-      method: "POST",
-      body: JSON.stringify({
-        ...providerForm,
-        baseUrl: providerForm.baseUrl || undefined
-      })
-    });
-    Object.assign(config, data);
-    Object.assign(providerForm, {
-      name: "",
-      adapterType: "openai_compatible",
-      baseUrl: "",
-      apiKeySecretName: "",
-      isEnabled: true
-    });
-    ElMessage.success("供应商已保存");
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "保存供应商失败");
-  } finally {
-    savingProvider.value = false;
-  }
+async function resetFilters() {
+  Object.assign(filters, { keyword: "", providerId: "", purpose: "", isEnabled: "" });
+  await applyFilters();
+}
+
+async function handleSizeChange() {
+  pagination.page = 1;
+  await loadModels();
 }
 
 async function saveModel() {
   savingModel.value = true;
 
   try {
-    const data = await adminRequest<AdminAiConfig>("/ai/models", {
+    await adminRequest<AdminAiConfig>("/ai/models", {
       method: "POST",
-      body: JSON.stringify(modelForm)
+      body: JSON.stringify({
+        ...modelForm,
+        id: modelForm.id || undefined
+      })
     });
-    Object.assign(config, data);
-    Object.assign(modelForm, {
-      providerId: "",
-      displayName: "",
-      modelName: "",
-      purpose: "chat_reply",
-      isEnabled: true,
-      configJson: {}
-    });
+    dialogVisible.value = false;
     ElMessage.success("模型已保存");
+    await Promise.all([loadProviderOptions(), loadModels()]);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "保存模型失败");
   } finally {
     savingModel.value = false;
   }
 }
-
-async function saveBindings() {
-  savingBindings.value = true;
-
-  try {
-    const data = await adminRequest<AdminAiConfig>("/ai/bindings", {
-      method: "PUT",
-      body: JSON.stringify(bindings)
-    });
-    Object.assign(config, data);
-    ElMessage.success("用途绑定已保存");
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "保存绑定失败");
-  } finally {
-    savingBindings.value = false;
-  }
-}
 </script>
-
-<style scoped>
-.model-panel {
-  margin-top: 16px;
-}
-
-.model-form {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 16px;
-}
-</style>

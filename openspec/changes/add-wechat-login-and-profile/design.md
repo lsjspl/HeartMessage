@@ -6,11 +6,11 @@ H5 在微信环境中应通过微信 OAuth 获取 `code`，再调用 `POST /v1/a
 
 服务端收到 code 后：
 
-1. 如果配置了 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，调用微信网页授权接口换取 openid/unionid。
+1. 如果后台敏感配置中配置了 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，调用微信网页授权接口换取 openid/unionid。
 2. 如果没有微信配置或 code 以 `dev-` 开头，进入本地开发模式，生成 `dev-openid-*`。
 3. 根据 openid 查找用户，不存在则创建用户。
 4. 查询用户资料，判断是否需要完善资料。
-5. 使用 `AUTH_TOKEN_SECRET` 签发 HMAC token。
+5. 使用后台敏感配置中的 `AUTH_TOKEN_SECRET` 签发 HMAC token。
 
 ## Token
 
@@ -36,5 +36,5 @@ H5 在微信环境中应通过微信 OAuth 获取 `code`，再调用 `POST /v1/a
 ## 安全边界
 
 - 所有 `/v1/me` 和 `/v1/uploads/avatar` 接口都必须要求登录。
-- Token secret 必须通过 Cloudflare 环境变量配置，开发环境允许 fallback。
+- Token secret 必须通过后台敏感配置维护，开发环境允许 fallback。
 - 生产环境不能依赖 `dev-*` code 登录。

@@ -11,7 +11,7 @@
 - 用户端仅在开发环境缺少 AppID 时使用 `dev-*` code。
 - API 仅允许本地环境使用 `dev-*` code 或缺配置占位登录。
 - 生产环境缺少微信配置时返回明确错误。
-- Token secret 仅允许本地环境使用开发 fallback，生产环境必须配置 `AUTH_TOKEN_SECRET`。
+- Token secret 仅允许本地环境使用开发 fallback，生产环境必须在后台敏感配置中配置 `AUTH_TOKEN_SECRET`。
 
 ## Impact
 

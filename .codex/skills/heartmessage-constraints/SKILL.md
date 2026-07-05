@@ -108,6 +108,12 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
     - 不允许因为管理后台、通用 Vue 项目或 npm `latest` tag 更新，就单独升级用户端 Vue、Vite 或 uni 相关包。
     - 当前确认的用户端基线是 `@dcloudio/* 3.0.0-5010420260703001`、`vue 3.4.21`、`vite 5.2.8`、`@dcloudio/types 3.4.31`；后续如 uni Vue3 发行线变化，必须整体核对后再改。
 
+20. 常用业务参数和密钥必须走后台系统配置。
+   - 不得使用 `wrangler vars`、硬编码常量或前后端分散配置来维护运行环境、CORS 白名单、管理员初始化账号密码、Token 签名密钥、微信配置、AI Key 等常用业务参数。
+   - 普通参数必须走后台系统参数；敏感值必须走后台敏感配置，列表和日志只能展示状态、来源、键名和脱敏预览，不得回显完整密钥。
+   - `wrangler.jsonc` 只保留 Worker 入口、兼容性、定时任务、D1/KV/R2/Queue 等平台绑定声明；新增业务参数前必须先确认是否能纳入后台配置。
+   - 真实生产密钥不得写入代码、OpenSpec、示例、日志或提交记录；后台保存密钥时也不得在接口响应中明文返回。
+
 ## 执行检查
 
 修改前：
@@ -119,6 +125,7 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
 - 确认是否需要先写或更新 OpenSpec；新功能必须先写规格。
 - 确认是否需要新增依赖；如需要，先说明理由。
 - 如果修改 `apps/client` 依赖，先确认 uni-app Vue3 发行线和 peer 依赖，不得单独追 Vue、Vite 最新版。
+- 如果涉及业务参数或密钥，先设计后台系统参数或敏感配置，不得新增 `wrangler vars`。
 
 修改中：
 
@@ -129,6 +136,7 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
 - 共享 API 契约放 `packages/shared`。
 - 数据库 schema 和 migration 同步维护。
 - AI 供应商选择走配置和 `packages/ai`，不得写死在业务里。
+- 运行环境、CORS、管理员初始化、Token 密钥、微信配置和 AI Key 读取必须走后台系统配置或敏感配置。
 
 完成前：
 
@@ -136,4 +144,5 @@ description: Enforce mandatory HeartMessage project constraints. Use whenever wo
 - 检查新增/修改文件没有超过 1500 行。
 - 在最终回复中说明是否存在例外、未验证项或需要用户确认的生产操作。
 - 检查没有误提交密钥、生成物、日志或临时文件。
+- 检查 `wrangler.jsonc` 没有新增常用业务参数或密钥。
 - 检查没有私自执行 git 提交、推送、PR 或生产操作。

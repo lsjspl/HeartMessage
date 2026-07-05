@@ -23,7 +23,7 @@
 
     <view class="chat-input">
       <input class="input" v-model="content" placeholder="输入回复..." />
-      <button class="primary-button send-button" :disabled="isSending" @click="send">发</button>
+      <button class="primary-button send-button" :disabled="isSending || !content.trim()" @click="send">发</button>
     </view>
   </view>
 </template>
@@ -64,7 +64,7 @@ async function loadMessages() {
 }
 
 async function send() {
-  if (!conversationId.value || isSending.value) {
+  if (!conversationId.value || isSending.value || !content.value.trim()) {
     return;
   }
 

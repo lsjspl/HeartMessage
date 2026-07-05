@@ -4,13 +4,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-04",
   "compatibility_flags": ["nodejs_compat"],
-  "vars": {
-    "ENVIRONMENT": "local",
-    "CORS_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
-    "AUTH_TOKEN_SECRET": "local-dev-secret-change-before-production",
-    "ADMIN_USERNAME": "local-admin",
-    "ADMIN_PASSWORD": "local-admin-password-change-before-production",
-    "LOCAL_TEST_MODEL_API_KEY": "local-fake-ai-key"
+  "triggers": {
+    "crons": ["17 */6 * * *"]
   },
   "d1_databases": [
     {

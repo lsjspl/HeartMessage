@@ -1,5 +1,7 @@
 import type { Env } from "../env";
 import { AppError } from "../errors";
+import { getSystemSettings } from "./settings";
+import { getOptionalSensitiveConfigValue } from "./sensitive-config";
 
 export interface WechatIdentity {
   openid: string;
@@ -19,19 +21,25 @@ function createDevIdentity(code: string): WechatIdentity {
   };
 }
 
-function isLocalEnvironment(env: Env) {
-  return env.ENVIRONMENT === "local" || env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test";
+function isLocalEnvironment(environment: string) {
+  return environment === "local" || environment === "development" || environment === "test";
 }
 
 export async function exchangeWechatCode(env: Env, code: string): Promise<WechatIdentity> {
+  const [settings, appId, appSecret] = await Promise.all([
+    getSystemSettings(env),
+    getOptionalSensitiveConfigValue(env, "WECHAT_APP_ID"),
+    getOptionalSensitiveConfigValue(env, "WECHAT_APP_SECRET")
+  ]);
   const isDevCode = code.startsWith("dev-");
-  const hasWechatConfig = Boolean(env.WECHAT_APP_ID && env.WECHAT_APP_SECRET);
+  const isLocal = isLocalEnvironment(settings.runtime.environment);
+  const hasWechatConfig = Boolean(appId && appSecret);
 
-  if (isDevCode && !isLocalEnvironment(env)) {
+  if (isDevCode && !isLocal) {
     throw new AppError(403, "DEV_WECHAT_CODE_FORBIDDEN", "生产环境不能使用开发登录 code");
   }
 
-  if (isLocalEnvironment(env) && (isDevCode || !hasWechatConfig)) {
+  if (isLocal && (isDevCode || !hasWechatConfig)) {
     return createDevIdentity(code);
   }
 
@@ -40,8 +48,8 @@ export async function exchangeWechatCode(env: Env, code: string): Promise<Wechat
   }
 
   const url = new URL("https://api.weixin.qq.com/sns/oauth2/access_token");
-  url.searchParams.set("appid", env.WECHAT_APP_ID!);
-  url.searchParams.set("secret", env.WECHAT_APP_SECRET!);
+  url.searchParams.set("appid", appId!);
+  url.searchParams.set("secret", appSecret!);
   url.searchParams.set("code", code);
   url.searchParams.set("grant_type", "authorization_code");
 

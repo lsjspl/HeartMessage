@@ -31,7 +31,7 @@
 
     <view v-if="bottle" class="action-grid">
       <button v-if="bottle.pickupId" class="danger-button" @click="removeBottle">删除</button>
-      <button v-if="bottle.pickupId" class="primary-button" :disabled="isReplying" @click="reply">
+      <button v-if="bottle.pickupId" class="primary-button" :disabled="isReplying || !replyContent.trim()" @click="reply">
         {{ isReplying ? "发送中" : "回复" }}
       </button>
       <button v-else class="secondary-button" @click="goThrow">继续扔瓶子</button>
@@ -116,7 +116,7 @@ async function pickNewBottle() {
 }
 
 async function reply() {
-  if (!bottle.value || isReplying.value) {
+  if (!bottle.value || isReplying.value || !replyContent.value.trim()) {
     return;
   }
 

@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { toErrorResponse } from "./middleware/error-handler";
 import { optionalAuth } from "./middleware/auth";
 import { resolveCorsOrigin } from "./middleware/cors";
+import { adminAccountRoutes } from "./routes/admin-accounts";
 import { adminAuthRoutes } from "./routes/admin-auth";
 import { adminRoutes } from "./routes/admin";
 import { aiRoutes } from "./routes/ai";
@@ -14,6 +15,7 @@ import { healthRoutes } from "./routes/health";
 import { mediaRoutes } from "./routes/media";
 import { meRoutes } from "./routes/me";
 import { uploadRoutes } from "./routes/uploads";
+import { runDueUserProfileEvaluations } from "./services/user-profile-insights";
 import type { Env } from "./env";
 import type { AuthVariables } from "./middleware/auth";
 
@@ -38,6 +40,7 @@ app.route("/v1/uploads", uploadRoutes);
 app.route("/v1/bottles", bottleRoutes);
 app.route("/v1/chats", chatRoutes);
 app.route("/admin/auth", adminAuthRoutes);
+app.route("/admin/accounts", adminAccountRoutes);
 app.route("/admin/ai", aiRoutes);
 app.route("/admin", adminRoutes);
 
@@ -73,4 +76,11 @@ app.onError((error, context) => {
   return context.json(response.body, status);
 });
 
-export default app;
+export default {
+  fetch(request, env, executionContext) {
+    return app.fetch(request, env, executionContext);
+  },
+  scheduled(_controller, env, executionContext) {
+    executionContext.waitUntil(runDueUserProfileEvaluations(env));
+  }
+} satisfies ExportedHandler<Env>;

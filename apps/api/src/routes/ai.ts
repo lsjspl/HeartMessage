@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import {
+  AdminAiModelListQuerySchema,
+  AdminAiProviderListQuerySchema,
   AiModelUpsertSchema,
   AiProviderUpsertSchema,
   AiPurposeBindingsSchema,
@@ -8,7 +10,13 @@ import {
 } from "@heart-message/shared";
 import type { Env } from "../env";
 import { requireAdmin, type AuthVariables } from "../middleware/auth";
-import { listAiConfig, upsertAiModel, upsertAiProvider } from "../services/ai-admin";
+import {
+  listAiConfig,
+  listAiModels,
+  listAiProviders,
+  upsertAiModel,
+  upsertAiProvider
+} from "../services/ai-admin";
 import { writeOperationLog } from "../services/logs";
 import { getSystemSettings, saveSystemSettings } from "../services/settings";
 
@@ -17,10 +25,15 @@ export const aiRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariabl
   .get("/config", async (context) => {
     return context.json(createOk(await listAiConfig(context.env)));
   })
-  .get("/models", async (context) => {
-    const config = await listAiConfig(context.env);
+  .get("/providers", async (context) => {
+    const query = AdminAiProviderListQuerySchema.parse(context.req.query());
 
-    return context.json(createOk(config.models));
+    return context.json(createOk(await listAiProviders(context.env, query)));
+  })
+  .get("/models", async (context) => {
+    const query = AdminAiModelListQuerySchema.parse(context.req.query());
+
+    return context.json(createOk(await listAiModels(context.env, query)));
   })
   .post("/providers", async (context) => {
     const input = AiProviderUpsertSchema.parse(await context.req.json());

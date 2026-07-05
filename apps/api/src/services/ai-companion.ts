@@ -5,6 +5,7 @@ import type { Env } from "../env";
 import { generateAiText } from "./ai-runtime";
 import { writeOperationLog } from "./logs";
 import { getEndOfDayMs } from "./time";
+import { getCompletedUserProfileInsightForPersona } from "./user-profile-insights";
 
 const AiPersonaOutputSchema = z.object({
   displayName: z.string().min(1).max(24),
@@ -46,6 +47,8 @@ function personaSystemPrompt() {
   return [
     "你是漂流瓶社交产品的人格生成器。",
     "请生成一个适合中文陪伴聊天的虚拟人格。",
+    "如果提供了用户画像，必须优先贴合用户偏好的话题、沟通风格和人格特征。",
+    "不得迎合广告、色情、联系方式交换或其他平台不允许的需求。",
     "只返回 JSON，不要 Markdown，不要代码块，不要额外解释。",
     "JSON 字段：displayName、bio、age、gender、systemPrompt。",
     "gender 只能是 male、female、unknown。systemPrompt 要写给后续聊天模型使用。"
@@ -75,13 +78,22 @@ function chatSystemPrompt(persona: AiConversationRow) {
   ].join("\n");
 }
 
-async function generatePersona(env: Env) {
+async function generatePersona(env: Env, targetUserId?: string) {
+  const profileInsight = targetUserId
+    ? await getCompletedUserProfileInsightForPersona(env, targetUserId)
+    : null;
   const generation = await generateAiText(
     env,
     "persona_generation",
     [
       { role: "system", content: personaSystemPrompt() },
-      { role: "user", content: "请生成一个新的漂流瓶陪伴人格。" }
+      {
+        role: "user",
+        content: JSON.stringify({
+          instruction: "请生成一个新的漂流瓶陪伴人格。",
+          userProfileInsight: profileInsight
+        })
+      }
     ],
     { temperature: 0.9, maxTokens: 700 }
   );
@@ -131,9 +143,9 @@ async function generateBottleContent(
   };
 }
 
-export async function createAiBottle(env: Env) {
+export async function createAiBottle(env: Env, targetUserId?: string) {
   try {
-    const personaGeneration = await generatePersona(env);
+    const personaGeneration = await generatePersona(env, targetUserId);
     const bottleGeneration = await generateBottleContent(env, personaGeneration.persona);
     const nowDate = new Date();
     const now = nowDate.getTime();
@@ -143,10 +155,11 @@ export async function createAiBottle(env: Env) {
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO ai_personas
-           (id, display_name, bio, age, gender, system_prompt, model_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, target_user_id, display_name, bio, age, gender, system_prompt, model_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         personaId,
+        targetUserId ?? null,
         personaGeneration.persona.displayName,
         personaGeneration.persona.bio,
         personaGeneration.persona.age ?? null,
@@ -170,6 +183,7 @@ export async function createAiBottle(env: Env) {
         personaId,
         personaModelId: personaGeneration.modelId,
         bottleModelId: bottleGeneration.modelId,
+        targeted: Boolean(targetUserId),
         contentLength: bottleGeneration.bottle.content.length
       }
     });

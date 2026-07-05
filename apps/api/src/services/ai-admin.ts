@@ -1,11 +1,15 @@
 import type {
   AdminAiConfig,
   AdminAiModel,
+  AdminAiModelListQuery,
   AdminAiProvider,
+  AdminAiProviderListQuery,
   AiModelUpsertInput,
-  AiProviderUpsertInput
+  AiProviderUpsertInput,
+  PaginatedList
 } from "@heart-message/shared";
 import type { Env } from "../env";
+import { createPaginatedList, paginationOffset } from "./pagination";
 import { getSystemSettings } from "./settings";
 
 interface ProviderRow {
@@ -91,6 +95,100 @@ export async function listAiConfig(env: Env): Promise<AdminAiConfig> {
     models: modelsResult.results.map(mapModel),
     bindings: settings.aiBindings
   };
+}
+
+export async function listAiProviders(
+  env: Env,
+  query: AdminAiProviderListQuery
+): Promise<PaginatedList<AdminAiProvider>> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (query.keyword) {
+    conditions.push("(id LIKE ? OR name LIKE ? OR base_url LIKE ? OR api_key_secret_name LIKE ?)");
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+  }
+
+  if (query.isEnabled) {
+    conditions.push("is_enabled = ?");
+    params.push(query.isEnabled === "true" ? 1 : 0);
+  }
+
+  const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRow, result] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS count FROM ai_providers ${whereSql}`)
+      .bind(...params)
+      .first<{ count: number }>(),
+    env.DB.prepare(
+      `SELECT id, name, adapter_type, base_url, api_key_secret_name, is_enabled, created_at, updated_at
+       FROM ai_providers
+       ${whereSql}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(...params, query.pageSize, paginationOffset(query))
+      .all<ProviderRow>()
+  ]);
+
+  return createPaginatedList(result.results.map(mapProvider), countRow?.count ?? 0, query);
+}
+
+export async function listAiModels(
+  env: Env,
+  query: AdminAiModelListQuery
+): Promise<PaginatedList<AdminAiModel>> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (query.keyword) {
+    conditions.push("(ai_models.id LIKE ? OR ai_models.display_name LIKE ? OR ai_models.model_name LIKE ?)");
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+  }
+
+  if (query.providerId) {
+    conditions.push("ai_models.provider_id = ?");
+    params.push(query.providerId);
+  }
+
+  if (query.purpose) {
+    conditions.push("ai_models.purpose = ?");
+    params.push(query.purpose);
+  }
+
+  if (query.isEnabled) {
+    conditions.push("ai_models.is_enabled = ?");
+    params.push(query.isEnabled === "true" ? 1 : 0);
+  }
+
+  const fromSql = `FROM ai_models
+       JOIN ai_providers ON ai_providers.id = ai_models.provider_id`;
+  const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRow, result] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS count ${fromSql} ${whereSql}`)
+      .bind(...params)
+      .first<{ count: number }>(),
+    env.DB.prepare(
+      `SELECT
+         ai_models.id,
+         ai_models.provider_id,
+         ai_providers.name AS provider_name,
+         ai_models.display_name,
+         ai_models.model_name,
+         ai_models.purpose,
+         ai_models.is_enabled,
+         ai_models.config_json,
+         ai_models.created_at,
+         ai_models.updated_at
+       ${fromSql}
+       ${whereSql}
+       ORDER BY ai_models.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(...params, query.pageSize, paginationOffset(query))
+      .all<ModelRow>()
+  ]);
+
+  return createPaginatedList(result.results.map(mapModel), countRow?.count ?? 0, query);
 }
 
 export async function upsertAiProvider(env: Env, input: AiProviderUpsertInput) {

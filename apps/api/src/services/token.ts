@@ -1,4 +1,5 @@
 import type { Env } from "../env";
+import { getSensitiveConfigValue } from "./sensitive-config";
 
 export interface AuthTokenPayload {
   sub: string;
@@ -45,16 +46,8 @@ async function importKey(secret: string) {
   );
 }
 
-function getSecret(env: Env) {
-  if (env.AUTH_TOKEN_SECRET) {
-    return env.AUTH_TOKEN_SECRET;
-  }
-
-  if (env.ENVIRONMENT === "local" || env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") {
-    return "local-dev-secret-change-before-production";
-  }
-
-  throw new Error("AUTH_TOKEN_SECRET is not configured");
+async function getSecret(env: Env) {
+  return getSensitiveConfigValue(env, "AUTH_TOKEN_SECRET");
 }
 
 export async function signAuthToken(
@@ -72,7 +65,7 @@ export async function signAuthToken(
   const signingInput = `${header}.${body}`;
   const signature = await crypto.subtle.sign(
     "HMAC",
-    await importKey(getSecret(env)),
+    await importKey(await getSecret(env)),
     encoder.encode(signingInput)
   );
 
@@ -89,7 +82,7 @@ export async function verifyAuthToken(env: Env, token: string): Promise<AuthToke
   const signingInput = `${header}.${body}`;
   const isValid = await crypto.subtle.verify(
     "HMAC",
-    await importKey(getSecret(env)),
+    await importKey(await getSecret(env)),
     base64UrlDecode(signature),
     encoder.encode(signingInput)
   );

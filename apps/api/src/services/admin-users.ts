@@ -1,6 +1,13 @@
-import type { AdminUserListItem, AdminUserStatusUpdateInput, UserStatus } from "@heart-message/shared";
+import type {
+  AdminUserListQuery,
+  AdminUserListItem,
+  AdminUserStatusUpdateInput,
+  PaginatedList,
+  UserStatus
+} from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
+import { createPaginatedList, paginationOffset } from "./pagination";
 
 interface AdminUserRow {
   id: string;
@@ -29,22 +36,57 @@ function mapAdminUser(row: AdminUserRow): AdminUserListItem {
   };
 }
 
-export async function listAdminUsers(env: Env): Promise<AdminUserListItem[]> {
-  const result = await env.DB.prepare(
-    `SELECT
-       users.id,
-       users.role,
-       users.status,
-       users.created_at,
-       user_profiles.nickname,
-       user_profiles.avatar_url
-     FROM users
-     LEFT JOIN user_profiles ON user_profiles.user_id = users.id
-     ORDER BY users.created_at DESC
-     LIMIT 100`
-  ).all<AdminUserRow>();
+export async function listAdminUsers(
+  env: Env,
+  query: AdminUserListQuery
+): Promise<PaginatedList<AdminUserListItem>> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
 
-  return result.results.map(mapAdminUser);
+  if (query.keyword) {
+    conditions.push("(users.id LIKE ? OR user_profiles.nickname LIKE ?)");
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`);
+  }
+
+  if (query.role) {
+    conditions.push("users.role = ?");
+    params.push(query.role);
+  }
+
+  if (query.status) {
+    conditions.push("users.status = ?");
+    params.push(query.status);
+  }
+
+  const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRow, result] = await Promise.all([
+    env.DB.prepare(
+      `SELECT COUNT(*) AS count
+       FROM users
+       LEFT JOIN user_profiles ON user_profiles.user_id = users.id
+       ${whereSql}`
+    )
+      .bind(...params)
+      .first<{ count: number }>(),
+    env.DB.prepare(
+      `SELECT
+         users.id,
+         users.role,
+         users.status,
+         users.created_at,
+         user_profiles.nickname,
+         user_profiles.avatar_url
+       FROM users
+       LEFT JOIN user_profiles ON user_profiles.user_id = users.id
+       ${whereSql}
+       ORDER BY users.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(...params, query.pageSize, paginationOffset(query))
+      .all<AdminUserRow>()
+  ]);
+
+  return createPaginatedList(result.results.map(mapAdminUser), countRow?.count ?? 0, query);
 }
 
 export async function updateAdminUserStatus(

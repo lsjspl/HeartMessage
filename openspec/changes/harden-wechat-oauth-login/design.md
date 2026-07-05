@@ -12,10 +12,10 @@
 
 ## API
 
-- `dev-*` code 只允许在 `ENVIRONMENT = local | development | test` 时使用。
-- 生产环境必须配置 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`。
+- `dev-*` code 只允许在系统参数的运行环境为 `local | development | test` 时使用。
+- 生产环境必须在后台敏感配置中配置 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`。
 - 微信接口失败时返回结构化错误，不泄露 secret。
-- 生产环境必须配置 `AUTH_TOKEN_SECRET`，本地环境才允许使用开发 fallback。
+- 生产环境必须在后台敏感配置中配置 `AUTH_TOKEN_SECRET`，本地环境才允许使用开发 fallback。
 
 ## 安全
 

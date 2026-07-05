@@ -30,6 +30,26 @@ export const userProfiles = sqliteTable("user_profiles", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
 });
 
+export const adminAccounts = sqliteTable(
+  "admin_accounts",
+  {
+    id: text("id").primaryKey(),
+    username: text("username").notNull(),
+    name: text("name").notNull(),
+    role: text("role", { enum: ["super_admin", "admin"] }).notNull().default("admin"),
+    status: text("status", { enum: ["active", "disabled", "deleted"] }).notNull().default("active"),
+    passwordHash: text("password_hash").notNull(),
+    passwordSalt: text("password_salt").notNull(),
+    passwordIterations: integer("password_iterations").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+  },
+  (table) => ({
+    usernameIdx: uniqueIndex("admin_accounts_username_idx").on(table.username),
+    statusIdx: index("admin_accounts_status_idx").on(table.status)
+  })
+);
+
 export const dailyQuotas = sqliteTable(
   "daily_quotas",
   {
@@ -162,7 +182,13 @@ export const aiModels = sqliteTable(
     displayName: text("display_name").notNull(),
     modelName: text("model_name").notNull(),
     purpose: text("purpose", {
-      enum: ["persona_generation", "bottle_generation", "chat_reply", "content_moderation"]
+      enum: [
+        "persona_generation",
+        "bottle_generation",
+        "chat_reply",
+        "content_moderation",
+        "user_profile_evaluation"
+      ]
     }).notNull(),
     isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
     configJson: text("config_json", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
@@ -178,6 +204,7 @@ export const aiPersonas = sqliteTable(
   "ai_personas",
   {
     id: text("id").primaryKey(),
+    targetUserId: text("target_user_id").references(() => users.id, { onDelete: "set null" }),
     displayName: text("display_name").notNull(),
     bio: text("bio").notNull(),
     age: integer("age"),
@@ -187,7 +214,44 @@ export const aiPersonas = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull()
   },
   (table) => ({
-    modelIdx: index("ai_personas_model_idx").on(table.modelId)
+    modelIdx: index("ai_personas_model_idx").on(table.modelId),
+    targetUserIdx: index("ai_personas_target_user_idx").on(table.targetUserId)
+  })
+);
+
+export const userProfileInsights = sqliteTable(
+  "user_profile_insights",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["pending", "completed", "failed"] }).notNull().default("pending"),
+    summary: text("summary").notNull().default(""),
+    interestTags: text("interest_tags", { mode: "json" }).$type<string[]>().notNull().default([]),
+    preferredTopics: text("preferred_topics", { mode: "json" }).$type<string[]>().notNull().default([]),
+    avoidedTopics: text("avoided_topics", { mode: "json" }).$type<string[]>().notNull().default([]),
+    conversationStyle: text("conversation_style").notNull().default(""),
+    emotionalNeeds: text("emotional_needs", { mode: "json" }).$type<string[]>().notNull().default([]),
+    preferredPersonaTraits: text("preferred_persona_traits", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    companionExpectation: text("companion_expectation").notNull().default(""),
+    safetyNotes: text("safety_notes").notNull().default(""),
+    sourceMessageCount: integer("source_message_count").notNull().default(0),
+    sourceBottleCount: integer("source_bottle_count").notNull().default(0),
+    modelId: text("model_id").references(() => aiModels.id, { onDelete: "set null" }),
+    evaluatedAt: integer("evaluated_at", { mode: "timestamp_ms" }),
+    lastErrorCode: text("last_error_code"),
+    lastErrorMessage: text("last_error_message"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+  },
+  (table) => ({
+    statusEvaluatedIdx: index("user_profile_insights_status_evaluated_idx").on(
+      table.status,
+      table.evaluatedAt
+    )
   })
 );
 

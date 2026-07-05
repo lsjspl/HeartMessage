@@ -1,5 +1,6 @@
-import type { OperationLogItem } from "@heart-message/shared";
+import type { AdminOperationLogListQuery, OperationLogItem, PaginatedList } from "@heart-message/shared";
 import type { Env } from "../env";
+import { createPaginatedList, paginationOffset } from "./pagination";
 
 interface OperationLogRow {
   id: string;
@@ -21,7 +22,8 @@ export async function writeOperationLog(
     metadata?: Record<string, unknown>;
   }
 ) {
-  const isAdminActor = input.actorId?.startsWith("admin:");
+  const isAdminActor =
+    input.actorId?.startsWith("admin:") || input.actorId?.startsWith("admin_account:");
   const metadata = {
     ...(input.metadata ?? {}),
     ...(isAdminActor ? { adminActor: input.actorId } : {})
@@ -43,15 +45,45 @@ export async function writeOperationLog(
     .run();
 }
 
-export async function listOperationLogs(env: Env): Promise<OperationLogItem[]> {
-  const result = await env.DB.prepare(
-    `SELECT id, actor_id, action, target_type, target_id, metadata, created_at
-     FROM operation_logs
-     ORDER BY created_at DESC
-     LIMIT 100`
-  ).all<OperationLogRow>();
+export async function listOperationLogs(
+  env: Env,
+  query: AdminOperationLogListQuery
+): Promise<PaginatedList<OperationLogItem>> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
 
-  return result.results.map((row) => ({
+  if (query.keyword) {
+    conditions.push("(action LIKE ? OR target_type LIKE ? OR target_id LIKE ?)");
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+  }
+
+  if (query.action) {
+    conditions.push("action LIKE ?");
+    params.push(`%${query.action}%`);
+  }
+
+  if (query.targetType) {
+    conditions.push("target_type LIKE ?");
+    params.push(`%${query.targetType}%`);
+  }
+
+  const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRow, result] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS count FROM operation_logs ${whereSql}`)
+      .bind(...params)
+      .first<{ count: number }>(),
+    env.DB.prepare(
+      `SELECT id, actor_id, action, target_type, target_id, metadata, created_at
+       FROM operation_logs
+       ${whereSql}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(...params, query.pageSize, paginationOffset(query))
+      .all<OperationLogRow>()
+  ]);
+
+  const items = result.results.map((row) => ({
     id: row.id,
     actorId: row.actor_id || undefined,
     action: row.action,
@@ -60,4 +92,6 @@ export async function listOperationLogs(env: Env): Promise<OperationLogItem[]> {
     metadata: JSON.parse(row.metadata || "{}") as Record<string, unknown>,
     createdAt: new Date(row.created_at).toISOString()
   }));
+
+  return createPaginatedList(items, countRow?.count ?? 0, query);
 }

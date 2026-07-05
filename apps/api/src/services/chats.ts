@@ -2,6 +2,7 @@ import type { BottleAuthor, ChatListItem, ChatMessage, ConversationMessages, Sen
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { generateAiReplyForConversation } from "./ai-companion";
+import { moderateUserContent } from "./content-safety";
 
 interface ConversationRow {
   id: string;
@@ -215,6 +216,12 @@ export async function sendChatMessage(env: Env, userId: string, input: SendMessa
   if (conversation.deleted_by_participant_a_at || conversation.deleted_by_participant_b_at) {
     throw new AppError(409, "CONVERSATION_CLOSED", "对方已经删除了这个瓶子关系，不能继续发送消息");
   }
+
+  await moderateUserContent(env, input.content, {
+    userId,
+    source: "chat_message",
+    targetId: input.conversationId
+  });
 
   const now = Date.now();
   const messageId = crypto.randomUUID();

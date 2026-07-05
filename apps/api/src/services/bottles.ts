@@ -1,8 +1,10 @@
 import type {
   AdminBottleListItem,
+  AdminBottleListQuery,
   AdminBottleStatusUpdateInput,
   BottleAuthor,
   BottleView,
+  PaginatedList,
   PickBottleResponse,
   ReplyBottleInput,
   ReplyBottleResponse,
@@ -12,6 +14,8 @@ import type {
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { createAiBottle, generateAiReplyForConversation } from "./ai-companion";
+import { moderateUserContent } from "./content-safety";
+import { createPaginatedList, paginationOffset } from "./pagination";
 import { consumePickQuota, consumeThrowQuota, getBottleQuota, releasePickQuota, releaseThrowQuota } from "./quotas";
 import { getSystemSettings } from "./settings";
 import { getEndOfDayMs, getQuotaDate, toIso } from "./time";
@@ -124,10 +128,15 @@ async function findPickCandidate(env: Env, userId: string, now: number) {
      WHERE bottles.status = 'floating'
        AND bottles.expires_at > ?
        AND (bottles.author_id IS NULL OR bottles.author_id <> ?)
+       AND (
+         bottles.source <> 'ai'
+         OR ai_personas.target_user_id IS NULL
+         OR ai_personas.target_user_id = ?
+       )
      ORDER BY bottles.created_at ASC
      LIMIT 1`
   )
-    .bind(now, userId)
+    .bind(now, userId, userId)
     .first<BottleRow>();
 }
 
@@ -139,6 +148,12 @@ export async function throwBottle(
   const nowDate = new Date();
   const now = nowDate.getTime();
   const quotaDate = getQuotaDate(nowDate);
+
+  await moderateUserContent(env, input.content, {
+    userId,
+    source: "bottle_throw"
+  });
+
   const quota = await consumeThrowQuota(env, userId, quotaDate);
   const bottleId = crypto.randomUUID();
 
@@ -189,7 +204,7 @@ export async function pickBottle(env: Env, userId: string): Promise<PickBottleRe
       throw new AppError(404, "NO_BOTTLE_AVAILABLE", "今天暂时没有可捞的瓶子");
     }
 
-    await createAiBottle(env);
+    await createAiBottle(env, userId);
     now = Date.now();
     candidate = await findPickCandidate(env, userId, now);
 
@@ -294,6 +309,12 @@ export async function replyToBottle(
     throw new AppError(403, "BOTTLE_NOT_PICKED", "只能回复自己捡到且未删除的瓶子");
   }
 
+  await moderateUserContent(env, input.content, {
+    userId,
+    source: "bottle_reply",
+    targetId: pickup.bottle_id
+  });
+
   const now = Date.now();
   const conversationId = pickup.conversation_id || crypto.randomUUID();
 
@@ -369,32 +390,64 @@ export async function deletePickedBottle(env: Env, userId: string, bottleId: str
   };
 }
 
-export async function listAdminBottles(env: Env): Promise<AdminBottleListItem[]> {
-  const result = await env.DB.prepare(
-    `SELECT
-       bottles.id,
-       bottles.content,
-       bottles.source,
-       bottles.status,
-       bottles.created_at,
-       bottles.expires_at,
-       COALESCE(user_profiles.nickname, ai_personas.display_name) AS nickname
-     FROM bottles
-     LEFT JOIN user_profiles ON user_profiles.user_id = bottles.author_id
-     LEFT JOIN ai_personas ON ai_personas.id = bottles.ai_persona_id
-     ORDER BY bottles.created_at DESC
-     LIMIT 100`
-  ).all<{
-    id: string;
-    content: string;
-    source: "human" | "ai";
-    status: BottleView["status"];
-    created_at: number;
-    expires_at: number;
-    nickname: string | null;
-  }>();
+export async function listAdminBottles(
+  env: Env,
+  query: AdminBottleListQuery
+): Promise<PaginatedList<AdminBottleListItem>> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
 
-  return result.results.map((row) => ({
+  if (query.keyword) {
+    conditions.push(
+      "(bottles.id LIKE ? OR bottles.content LIKE ? OR user_profiles.nickname LIKE ? OR ai_personas.display_name LIKE ?)"
+    );
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+  }
+
+  if (query.source) {
+    conditions.push("bottles.source = ?");
+    params.push(query.source);
+  }
+
+  if (query.status) {
+    conditions.push("bottles.status = ?");
+    params.push(query.status);
+  }
+
+  const fromSql = `FROM bottles
+       LEFT JOIN user_profiles ON user_profiles.user_id = bottles.author_id
+       LEFT JOIN ai_personas ON ai_personas.id = bottles.ai_persona_id`;
+  const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRow, result] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS count ${fromSql} ${whereSql}`)
+      .bind(...params)
+      .first<{ count: number }>(),
+    env.DB.prepare(
+      `SELECT
+         bottles.id,
+         bottles.content,
+         bottles.source,
+         bottles.status,
+         bottles.created_at,
+         bottles.expires_at,
+         COALESCE(user_profiles.nickname, ai_personas.display_name) AS nickname
+       ${fromSql}
+       ${whereSql}
+       ORDER BY bottles.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(...params, query.pageSize, paginationOffset(query))
+      .all<{
+        id: string;
+        content: string;
+        source: "human" | "ai";
+        status: BottleView["status"];
+        created_at: number;
+        expires_at: number;
+        nickname: string | null;
+      }>()
+  ]);
+  const items = result.results.map((row) => ({
     id: row.id,
     authorNickname: row.nickname || "匿名漂流者",
     contentPreview: row.content.length > 80 ? `${row.content.slice(0, 80)}...` : row.content,
@@ -403,6 +456,8 @@ export async function listAdminBottles(env: Env): Promise<AdminBottleListItem[]>
     createdAt: new Date(row.created_at).toISOString(),
     expiresAt: new Date(row.expires_at).toISOString()
   }));
+
+  return createPaginatedList(items, countRow?.count ?? 0, query);
 }
 
 export async function updateAdminBottleStatus(
@@ -410,18 +465,33 @@ export async function updateAdminBottleStatus(
   bottleId: string,
   input: AdminBottleStatusUpdateInput
 ) {
-  const current = await env.DB.prepare("SELECT id, status, source FROM bottles WHERE id = ?")
+  const current = await env.DB.prepare("SELECT id, status, source, picked_at, expires_at FROM bottles WHERE id = ?")
     .bind(bottleId)
-    .first<{ id: string; status: BottleView["status"]; source: "human" | "ai" }>();
+    .first<{
+      id: string;
+      status: BottleView["status"];
+      source: "human" | "ai";
+      picked_at: number | null;
+      expires_at: number;
+    }>();
 
   if (!current) {
     throw new AppError(404, "BOTTLE_NOT_FOUND", "瓶子不存在");
   }
 
   const now = Date.now();
+  let nextStatus: BottleView["status"] = input.status === "restore" ? "floating" : input.status;
+
+  if (input.status === "restore") {
+    if (current.status !== "blocked") {
+      throw new AppError(409, "BOTTLE_NOT_BLOCKED", "只有封禁状态的瓶子可以解封");
+    }
+
+    nextStatus = current.picked_at ? "picked" : current.expires_at <= now ? "expired" : "floating";
+  }
 
   await env.DB.prepare("UPDATE bottles SET status = ?, updated_at = ? WHERE id = ?")
-    .bind(input.status, now, bottleId)
+    .bind(nextStatus, now, bottleId)
     .run();
 
   if (input.status === "blocked" || input.status === "deleted") {
@@ -430,11 +500,17 @@ export async function updateAdminBottleStatus(
       .run();
   }
 
+  if (input.status === "restore") {
+    await env.DB.prepare("UPDATE conversations SET status = 'active', updated_at = ? WHERE bottle_id = ? AND status = 'blocked'")
+      .bind(now, bottleId)
+      .run();
+  }
+
   return {
     id: bottleId,
     source: current.source,
     previousStatus: current.status,
-    status: input.status
+    status: nextStatus
   };
 }
 

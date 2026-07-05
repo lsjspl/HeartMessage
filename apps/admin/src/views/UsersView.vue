@@ -5,12 +5,51 @@
         <h1>用户管理</h1>
         <p>查看微信注册用户、资料完善状态和账号状态。</p>
       </div>
-      <el-button type="primary" @click="loadUsers">刷新</el-button>
     </div>
 
     <el-card shadow="never">
-      <el-table v-loading="loading" :data="users" stripe>
-        <el-table-column prop="id" label="用户 ID" min-width="220" />
+      <div class="table-toolbar">
+        <div class="table-filters">
+          <el-input v-model="filters.keyword" clearable placeholder="用户 ID / 昵称" @keyup.enter="applyFilters" />
+          <el-select v-model="filters.role" clearable placeholder="角色">
+            <el-option label="用户" value="user" />
+            <el-option label="管理员" value="admin" />
+          </el-select>
+          <el-select v-model="filters.status" clearable placeholder="状态">
+            <el-option label="正常" value="active" />
+            <el-option label="禁用" value="disabled" />
+            <el-option label="已删除" value="deleted" />
+          </el-select>
+          <div class="filter-actions">
+            <el-tooltip content="搜索">
+              <el-button circle :icon="Search" @click="applyFilters" />
+            </el-tooltip>
+            <el-tooltip content="重置筛选">
+              <el-button circle :icon="RefreshLeft" @click="resetFilters" />
+            </el-tooltip>
+          </div>
+        </div>
+        <div class="table-actions">
+          <el-tooltip content="刷新">
+            <el-button circle :loading="loading" :icon="Refresh" @click="loadUsers" />
+          </el-tooltip>
+          <el-tooltip content="取消多选">
+            <el-button circle :disabled="!selectedRows.length" :icon="Close" @click="clearSelection" />
+          </el-tooltip>
+        </div>
+      </div>
+
+      <el-table
+        ref="tableRef"
+        v-loading="loading"
+        :data="users"
+        row-key="id"
+        stripe
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" />
+        <el-table-column type="index" label="序号" width="76" :index="indexMethod" />
+        <el-table-column prop="id" label="用户 ID" min-width="220" show-overflow-tooltip />
         <el-table-column label="昵称" min-width="140">
           <template #default="{ row }">
             {{ row.nickname || "未完善" }}
@@ -29,57 +68,113 @@
             {{ formatTime(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="96" fixed="right">
           <template #default="{ row }">
-            <el-button
-              v-if="row.status === 'active'"
-              type="danger"
-              link
-              :loading="updatingId === row.id"
-              @click="updateStatus(row.id, 'disabled')"
-            >
-              禁用
-            </el-button>
-            <el-button
-              v-else-if="row.status === 'disabled'"
-              type="primary"
-              link
-              :loading="updatingId === row.id"
-              @click="updateStatus(row.id, 'active')"
-            >
-              恢复
-            </el-button>
+            <el-tooltip v-if="row.status === 'active'" content="禁用">
+              <el-button
+                circle
+                type="danger"
+                :icon="Lock"
+                :loading="updatingId === row.id"
+                @click="updateStatus(row.id, 'disabled')"
+              />
+            </el-tooltip>
+            <el-tooltip v-else-if="row.status === 'disabled'" content="恢复">
+              <el-button
+                circle
+                type="primary"
+                :icon="Unlock"
+                :loading="updatingId === row.id"
+                @click="updateStatus(row.id, 'active')"
+              />
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.pageSize"
+        class="table-pagination"
+        :page-sizes="adminPageSizes"
+        :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="loadUsers"
+      />
     </el-card>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
-import type { AdminUserListItem, AdminUserStatusUpdateInput } from "@heart-message/shared";
+import { Close, Lock, Refresh, RefreshLeft, Search, Unlock } from "@element-plus/icons-vue";
+import type { AdminUserListItem, AdminUserStatusUpdateInput, PaginatedList } from "@heart-message/shared";
 import { adminRequest } from "../services/api";
+import {
+  adminPageSizes,
+  applyPagination,
+  createPaginationState,
+  listQuery
+} from "../services/pagination";
 
 const loading = ref(false);
 const updatingId = ref("");
 const users = ref<AdminUserListItem[]>([]);
+const selectedRows = ref<AdminUserListItem[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
+const pagination = reactive(createPaginationState());
+const filters = reactive({
+  keyword: "",
+  role: "",
+  status: ""
+});
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
+}
+
+function indexMethod(index: number) {
+  return (pagination.page - 1) * pagination.pageSize + index + 1;
+}
+
+function handleSelectionChange(rows: AdminUserListItem[]) {
+  selectedRows.value = rows;
+}
+
+function clearSelection() {
+  tableRef.value?.clearSelection();
 }
 
 async function loadUsers() {
   loading.value = true;
 
   try {
-    users.value = await adminRequest<AdminUserListItem[]>("/users");
+    const data = await adminRequest<PaginatedList<AdminUserListItem>>(
+      `/users?${listQuery(pagination, filters)}`
+    );
+    users.value = data.items;
+    applyPagination(pagination, data.pagination);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "加载用户失败");
   } finally {
     loading.value = false;
   }
+}
+
+async function applyFilters() {
+  pagination.page = 1;
+  await loadUsers();
+}
+
+async function resetFilters() {
+  Object.assign(filters, { keyword: "", role: "", status: "" });
+  await applyFilters();
+}
+
+async function handleSizeChange() {
+  pagination.page = 1;
+  await loadUsers();
 }
 
 async function updateStatus(id: string, status: AdminUserStatusUpdateInput["status"]) {

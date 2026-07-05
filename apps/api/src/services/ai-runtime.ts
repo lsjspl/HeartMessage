@@ -3,6 +3,7 @@ import type { AiModelPurpose } from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { getSystemSettings } from "./settings";
+import { getSensitiveConfigValue } from "./sensitive-config";
 
 interface AiRuntimeModelRow {
   id: string;
@@ -25,16 +26,6 @@ export interface ResolvedAiModel {
 
 function parseModelOptions(value: string) {
   return JSON.parse(value || "{}") as Record<string, unknown>;
-}
-
-function readSecret(env: Env, secretName: string) {
-  const value = (env as unknown as Record<string, unknown>)[secretName];
-
-  if (typeof value !== "string" || !value) {
-    throw new AppError(500, "AI_SECRET_NOT_CONFIGURED", `AI 密钥环境变量未配置：${secretName}`);
-  }
-
-  return value;
 }
 
 async function resolveAiModel(env: Env, purpose: AiModelPurpose) {
@@ -86,7 +77,7 @@ export async function generateAiText(
       model: row.model_name,
       purpose: row.purpose,
       baseUrl: row.base_url || undefined,
-      apiKey: readSecret(env, row.api_key_secret_name),
+      apiKey: await getSensitiveConfigValue(env, row.api_key_secret_name),
       options: parseModelOptions(row.config_json)
     },
     messages,
