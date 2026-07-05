@@ -14,10 +14,11 @@ API 自动部署只负责生产发布链路中可重复、安全的步骤：
 
 ## 后台配置初始化策略
 
-系统配置和敏感配置都通过后端服务读写 `CONFIG_KV`：
+系统配置和敏感配置都通过后端服务读写 D1：
 
-- 当 `system-settings` 缺失时，后端首次读取系统配置时写入默认系统配置。
-- 当 `AUTH_TOKEN_SECRET` 缺失且需要签发 Token 时，后端生成随机密钥并写入 `system-sensitive-config`。
+- D1 migration 创建 `system_settings` 和 `sensitive_configs` 表。
+- D1 migration 写入默认 `system-settings`，默认 CORS 为 `*`。
+- D1 migration 写入随机 `AUTH_TOKEN_SECRET`；如果旧库缺失该值，后端在签发 Token 时兜底生成并写入 D1。
 - 微信 App Secret、AI Key 等其他敏感值必须由管理员在后台敏感配置页面补齐。
 
 部署脚本不得覆盖后台已经修改过的系统参数或敏感配置。
@@ -30,4 +31,4 @@ Cloudflare Worker Git 集成中，API 项目的 Root directory 留空，Deploy c
 
 - 日志不能输出敏感值。
 - 部署脚本不得依赖 `PRODUCTION_CORS_ORIGINS`、`AUTH_TOKEN_SECRET` 等业务配置环境变量。
-- 不在部署脚本里创建生产资源；D1、KV、R2、Queue 仍由 Cloudflare 控制台创建并绑定。
+- 不在部署脚本里创建生产资源；D1、R2、Queue 仍由 Cloudflare 控制台创建并绑定。

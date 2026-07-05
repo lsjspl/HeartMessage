@@ -15,12 +15,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  "kv_namespaces": [
-    {
-      "binding": "CONFIG_KV",
-      "id": "38c41634ee8543ce8aa6ad9d98d81401"
-    }
-  ],
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",

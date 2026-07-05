@@ -28,14 +28,16 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
 };
 
 export async function getSystemSettings(env: Env): Promise<SystemSettings> {
-  const stored = await env.CONFIG_KV.get(SETTINGS_KEY);
+  const stored = await env.DB.prepare("SELECT value_json FROM system_settings WHERE key = ?")
+    .bind(SETTINGS_KEY)
+    .first<{ value_json: string }>();
 
   if (!stored) {
-    await env.CONFIG_KV.put(SETTINGS_KEY, JSON.stringify(DEFAULT_SYSTEM_SETTINGS));
+    await saveSystemSettings(env, DEFAULT_SYSTEM_SETTINGS);
     return DEFAULT_SYSTEM_SETTINGS;
   }
 
-  const parsed = JSON.parse(stored) as Partial<SystemSettings>;
+  const parsed = JSON.parse(stored.value_json) as Partial<SystemSettings>;
 
   return SystemSettingsSchema.parse({
     ...DEFAULT_SYSTEM_SETTINGS,
@@ -57,7 +59,15 @@ export async function getSystemSettings(env: Env): Promise<SystemSettings> {
 
 export async function saveSystemSettings(env: Env, input: SystemSettings) {
   const settings = SystemSettingsSchema.parse(input);
-  await env.CONFIG_KV.put(SETTINGS_KEY, JSON.stringify(settings));
+  const now = Date.now();
+
+  await env.DB.prepare(
+    `INSERT INTO system_settings (key, value_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`
+  )
+    .bind(SETTINGS_KEY, JSON.stringify(settings), now, now)
+    .run();
 
   return settings;
 }

@@ -17,7 +17,7 @@
 #### Scenario: 开发者准备部署 API
 
 - **WHEN** 开发者查看 API 部署说明
-- **THEN** 文档 MUST 列出 D1、KV、R2、Queues、环境变量和 migration 的生产准备项
+- **THEN** 文档 MUST 列出 D1、R2、Queues、环境变量和 migration 的生产准备项
 - **AND** 不得包含真实密钥或生产资源 ID。
 
 #### Scenario: 未经确认的生产操作

@@ -21,7 +21,7 @@
 
 ### Requirement: Cloudflare API 边界
 
-API MUST 实现为 Cloudflare Worker，并显式声明 D1、KV、R2 和 Queue 绑定。
+API MUST 实现为 Cloudflare Worker，并显式声明 D1、R2 和 Queue 绑定。
 
 #### Scenario: Worker 收到请求
 

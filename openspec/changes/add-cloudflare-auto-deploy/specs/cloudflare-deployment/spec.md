@@ -25,13 +25,14 @@
 #### Scenario: 系统配置不存在
 
 - **WHEN** `system-settings` 不存在
-- **THEN** 后端 MUST 写入默认系统配置到 `CONFIG_KV`
+- **THEN** 后端 MUST 写入默认系统配置到 D1
 - **AND** 后续后台系统参数页面 MUST 能读取和修改该配置。
 
 #### Scenario: Token 签名密钥不存在
 
 - **WHEN** `AUTH_TOKEN_SECRET` 不存在且系统需要签发登录 Token
 - **THEN** 后端 MUST 生成随机密钥并写入后台敏感配置
+- **AND** 后台敏感配置 MUST 存储在 D1
 - **AND** 接口响应和日志不得回显完整密钥。
 
 #### Scenario: 构建环境缺少业务配置变量

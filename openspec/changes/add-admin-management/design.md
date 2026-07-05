@@ -14,7 +14,7 @@
 
 ## 系统参数
 
-系统参数保存在 `CONFIG_KV`，key 为 `system-settings`。当 KV 没有值时返回显式默认配置：
+系统参数保存在 D1 的 `system_settings` 表，key 为 `system-settings`。当 D1 没有值时写入并返回显式默认配置：
 
 - 运行环境。
 - CORS 白名单，允许使用 `*` 表示任意来源。
@@ -26,7 +26,7 @@
 
 保存参数时校验共享 schema，并写入操作日志。后续瓶子额度服务读取该配置，避免后台配置只是摆设。
 
-Token 签名密钥、微信配置和 AI Key 等敏感值通过后台敏感配置接口写入 `CONFIG_KV`，不得继续通过 `wrangler vars` 配置常用业务参数。日志只记录配置键和更新动作，不记录配置值。
+Token 签名密钥、微信配置和 AI Key 等敏感值通过后台敏感配置接口写入 D1 的 `sensitive_configs` 表，不得继续通过 KV 或 `wrangler vars` 配置常用业务参数。日志只记录配置键和更新动作，不记录配置值。
 
 ## AI 供应商和模型
 

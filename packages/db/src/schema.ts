@@ -50,6 +50,20 @@ export const adminAccounts = sqliteTable(
   })
 );
 
+export const systemSettings = sqliteTable("system_settings", {
+  key: text("key").primaryKey(),
+  valueJson: text("value_json", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+});
+
+export const sensitiveConfigs = sqliteTable("sensitive_configs", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+});
+
 export const dailyQuotas = sqliteTable(
   "daily_quotas",
   {

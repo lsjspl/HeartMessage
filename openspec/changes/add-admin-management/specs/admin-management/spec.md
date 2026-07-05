@@ -88,12 +88,12 @@
 #### Scenario: 管理员查看系统参数
 
 - **WHEN** 管理员请求系统参数
-- **THEN** API 返回当前 KV 参数或显式默认参数。
+- **THEN** API 返回当前 D1 参数或显式默认参数。
 
 #### Scenario: 管理员保存系统参数
 
 - **WHEN** 管理员提交合法系统参数
-- **THEN** API 将参数保存到 KV
+- **THEN** API 将参数保存到 D1
 - **AND** 写入操作日志。
 
 #### Scenario: 管理员修改访问白名单
@@ -123,7 +123,8 @@
 
 - **WHEN** 登录 token、微信登录或 AI 调用需要密钥
 - **THEN** 后端 MUST 从敏感配置读取
-- **AND** 不得继续依赖 `wrangler vars` 配置常用业务参数。
+- **AND** 敏感配置 MUST 存储在 D1
+- **AND** 不得继续依赖 KV 或 `wrangler vars` 配置常用业务参数。
 
 ### Requirement: AI 模型管理
 

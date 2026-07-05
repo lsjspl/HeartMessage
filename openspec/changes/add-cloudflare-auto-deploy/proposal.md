@@ -2,7 +2,7 @@
 
 ## Purpose
 
-当前 Cloudflare 部署说明要求人工执行远程 D1 migration，并手动向 KV 写入首次系统配置。这个流程容易漏步骤，也不符合网页端绑定 GitHub 后自动部署的使用方式。需要提供一条可由 Cloudflare Git 构建或 GitHub CI 调用的自动化部署链路。
+当前 Cloudflare 部署说明要求人工执行远程 D1 migration，首次系统配置也需要由数据库 migration 创建。需要提供一条可由 Cloudflare Git 构建或 GitHub CI 调用的自动化部署链路。
 
 ## What Changes
 
@@ -18,4 +18,4 @@
 - 影响 `apps/api/package.json`。
 - 影响 `apps/api/src/services/settings.ts` 和 `apps/api/src/services/sensitive-config.ts`。
 - 更新 `docs/deployment/cloudflare.md`。
-- 不执行生产部署、不执行远程 D1 migration、不修改远程 KV。
+- 不执行生产部署、不执行远程 D1 migration。

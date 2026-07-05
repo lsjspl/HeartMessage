@@ -2,7 +2,7 @@
 
 ## 部署边界
 
-本说明记录 Cloudflare Dashboard 绑定 GitHub 的部署方式。执行生产部署、远程 D1 migration、远程 KV/R2/Queue 修改前，必须确认目标环境、资源、命令、影响范围和回滚方式，并由项目负责人明确同意。
+本说明记录 Cloudflare Dashboard 绑定 GitHub 的部署方式。执行生产部署、远程 D1 migration、远程 R2/Queue 修改前，必须确认目标环境、资源、命令、影响范围和回滚方式，并由项目负责人明确同意。
 
 ## 项目拆分
 
@@ -17,11 +17,10 @@
 先在 Cloudflare Dashboard 创建并绑定以下资源：
 
 - D1：`heart-message-db`。
-- KV：用于 `CONFIG_KV`，保存系统参数和敏感配置。
 - R2：`heart-message-media`。
 - Queue：`heart-message-ai`、`heart-message-logs`。
 
-`apps/api/wrangler.jsonc` 只保存 Worker 入口、兼容性、定时任务和 Cloudflare 绑定声明。运行环境、CORS 白名单、Token 密钥、微信配置和 AI Key 都必须走后台系统配置或敏感配置。默认超级管理员由 D1 migration 创建，初始账号密码是 `admin / 123456`，首次登录后必须立即修改密码。
+`apps/api/wrangler.jsonc` 只保存 Worker 入口、兼容性、定时任务和 Cloudflare 绑定声明。运行环境、CORS 白名单、Token 密钥、微信配置和 AI Key 都必须走后台系统配置或敏感配置，并落在 D1 中。默认超级管理员由 D1 migration 创建，初始账号密码是 `admin / 123456`，首次登录后必须立即修改密码。
 
 ## API Worker 自动部署
 
@@ -53,7 +52,7 @@ pnpm --filter @heart-message/api deploy:ci
 
 API 自动部署不得通过 Cloudflare 构建环境变量维护运行环境、CORS 白名单、Token 签名密钥、微信配置或 AI Key。
 
-首次访问 API 时，后端会在 `CONFIG_KV` 中写入缺失的系统配置默认值；首次签发登录 Token 时，如果后台敏感配置中还没有 `AUTH_TOKEN_SECRET`，后端会生成随机密钥并写入敏感配置。之后这些值都必须在管理后台中查看状态和修改：
+数据库 migration 会在 D1 中创建 `system_settings` 和 `sensitive_configs` 表，并写入默认系统配置与 `AUTH_TOKEN_SECRET`。之后这些值都必须在管理后台中查看状态和修改：
 
 - 系统参数：运行环境、CORS 白名单、额度、AI 触发策略、用户画像评估计划。
 - 敏感配置：`AUTH_TOKEN_SECRET`、微信 App Secret、AI Key。
