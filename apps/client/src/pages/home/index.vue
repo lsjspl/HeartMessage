@@ -5,8 +5,11 @@
     <view class="home-content">
       <view class="topbar">
         <view class="brand-block">
-          <text class="brand">HeartMessage</text>
-          <text class="brand-subtitle">今日海面</text>
+          <image class="brand-logo" src="/static/brand/logo-mark.png" mode="aspectFit" />
+          <view class="brand-copy">
+            <text class="brand">HeartMessage</text>
+            <text class="brand-subtitle">今日海面</text>
+          </view>
         </view>
         <view class="top-actions">
           <text class="quota-chip">可捡 {{ session.quotas.pickRemaining }} 封</text>
@@ -198,7 +201,22 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 .brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   padding-top: 4rpx;
+}
+
+.brand-logo {
+  flex: 0 0 auto;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 14rpx;
+  box-shadow: 0 12rpx 28rpx rgba(18, 117, 146, 0.14);
+}
+
+.brand-copy {
+  min-width: 0;
 }
 
 .brand {
@@ -412,6 +430,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   .brand {
     font-size: 19px;
+  }
+
+  .brand-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
   }
 
   .brand-subtitle {

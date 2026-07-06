@@ -6,9 +6,30 @@
     <view class="card avatar-card">
       <image v-if="form.avatarUrl" class="avatar-image" :src="form.avatarUrl" mode="aspectFill" />
       <view v-else class="avatar">{{ avatarInitial }}</view>
-      <button class="secondary-button small-button" :disabled="uploadingAvatar" @click="chooseAvatar">
-        {{ uploadingAvatar ? "上传中" : "选择头像" }}
-      </button>
+      <view class="avatar-actions">
+        <text class="avatar-title">头像</text>
+        <button class="secondary-button small-button" :disabled="uploadingAvatar" @click="chooseAvatar">
+          {{ uploadingAvatar ? "上传中" : "上传头像" }}
+        </button>
+      </view>
+    </view>
+
+    <view class="card default-avatar-card">
+      <view v-for="group in defaultAvatarGroups" :key="group.title" class="avatar-group">
+        <text class="avatar-group-title">{{ group.title }}</text>
+        <view class="avatar-grid">
+          <button
+            v-for="avatar in group.options"
+            :key="avatar.id"
+            class="avatar-option"
+            :class="{ active: isDefaultAvatarSelected(avatar.path) }"
+            hover-class="none"
+            @click="selectDefaultAvatar(avatar.path)"
+          >
+            <image class="default-avatar-image" :src="avatar.path" mode="aspectFill" />
+          </button>
+        </view>
+      </view>
     </view>
 
     <view class="field">
@@ -45,6 +66,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import type { Gender } from "@heart-message/shared";
+import { DEFAULT_AVATAR_GROUPS, toAvatarPath, toDefaultAvatarUrl } from "../../constants/default-avatars";
 import { useSessionStore } from "../../stores/session";
 import { resolveAvatarContentType, uploadAvatarFile } from "../../services/uploads";
 
@@ -63,6 +85,7 @@ const genderOptions: Array<{ label: string; value: Gender }> = [
   { label: "男", value: "male" },
   { label: "女", value: "female" }
 ];
+const defaultAvatarGroups = DEFAULT_AVATAR_GROUPS;
 const avatarInitial = computed(() => form.nickname.trim().slice(0, 1) || "漂");
 
 interface ChosenImageFile {
@@ -113,6 +136,14 @@ async function chooseAvatar() {
   }
 }
 
+function selectDefaultAvatar(path: string) {
+  form.avatarUrl = toDefaultAvatarUrl(path);
+}
+
+function isDefaultAvatarSelected(path: string) {
+  return toAvatarPath(form.avatarUrl) === path;
+}
+
 async function submit() {
   loading.value = true;
 
@@ -146,7 +177,7 @@ async function submit() {
   display: flex;
   align-items: center;
   gap: 28rpx;
-  margin: 36rpx 0;
+  margin: 36rpx 0 24rpx;
 }
 
 .avatar {
@@ -169,10 +200,75 @@ async function submit() {
   background: #e8eef2;
 }
 
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.avatar-title {
+  color: #14213d;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
 .small-button {
   width: 220rpx;
   height: 72rpx;
   margin: 0;
+}
+
+.default-avatar-card {
+  margin-bottom: 28rpx;
+}
+
+.avatar-group + .avatar-group {
+  margin-top: 24rpx;
+}
+
+.avatar-group-title {
+  display: block;
+  margin-bottom: 14rpx;
+  color: #65758b;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.avatar-option {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #edf7f5;
+  border: 4rpx solid transparent;
+  border-radius: 999rpx;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.avatar-option::after {
+  border: 0;
+}
+
+.avatar-option.active {
+  border-color: #ef7653;
+  box-shadow:
+    0 0 0 5rpx rgba(239, 118, 83, 0.14),
+    0 14rpx 28rpx rgba(18, 117, 146, 0.16);
+}
+
+.default-avatar-image {
+  width: 100%;
+  height: 100%;
 }
 
 .field {
@@ -199,5 +295,50 @@ async function submit() {
   color: #ffffff;
   background: #0f8f8c;
   border-color: #0f8f8c;
+}
+
+@media screen and (min-width: 900px) {
+  .avatar-card {
+    gap: 18px;
+    margin: 24px 0 16px;
+  }
+
+  .avatar,
+  .avatar-image {
+    width: 82px;
+    height: 82px;
+  }
+
+  .avatar-title {
+    font-size: 18px;
+  }
+
+  .default-avatar-card {
+    margin-bottom: 20px;
+  }
+
+  .avatar-group + .avatar-group {
+    margin-top: 18px;
+  }
+
+  .avatar-group-title {
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  .avatar-grid {
+    grid-template-columns: repeat(4, 78px);
+    gap: 12px;
+  }
+
+  .avatar-option {
+    border-width: 3px;
+  }
+
+  .avatar-option.active {
+    box-shadow:
+      0 0 0 3px rgba(239, 118, 83, 0.14),
+      0 8px 18px rgba(18, 117, 146, 0.14);
+  }
 }
 </style>

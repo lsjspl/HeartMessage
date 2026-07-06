@@ -4,7 +4,7 @@ export const users = sqliteTable(
   "users",
   {
     id: text("id").primaryKey(),
-    wechatOpenId: text("wechat_open_id").notNull(),
+    wechatOpenId: text("wechat_open_id"),
     wechatUnionId: text("wechat_union_id"),
     role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
     status: text("status", { enum: ["active", "disabled", "deleted"] }).notNull().default("active"),
@@ -13,6 +13,27 @@ export const users = sqliteTable(
   },
   (table) => ({
     wechatOpenIdIdx: uniqueIndex("users_wechat_open_id_idx").on(table.wechatOpenId)
+  })
+);
+
+export const userAuthIdentities = sqliteTable(
+  "user_auth_identities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["wechat", "google"] }).notNull(),
+    providerUserId: text("provider_user_id").notNull(),
+    email: text("email"),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+  },
+  (table) => ({
+    providerUserIdx: uniqueIndex("user_auth_identities_provider_user_idx").on(table.provider, table.providerUserId),
+    userProviderIdx: index("user_auth_identities_user_provider_idx").on(table.userId, table.provider)
   })
 );
 

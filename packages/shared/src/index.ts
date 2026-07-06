@@ -81,16 +81,45 @@ export const AuthUserSchema = z.object({
 });
 export type AuthUser = z.infer<typeof AuthUserSchema>;
 
+export const AuthProviderSchema = z.enum(["wechat", "google"]);
+export type AuthProvider = z.infer<typeof AuthProviderSchema>;
+
+export const WechatLoginModeSchema = z.enum(["web_qr"]);
+export type WechatLoginMode = z.infer<typeof WechatLoginModeSchema>;
+
 export const WechatLoginSchema = z.object({
   code: z.string().min(1),
+  mode: WechatLoginModeSchema.default("web_qr"),
   redirectUri: z.string().url().optional()
 });
 export type WechatLoginInput = z.infer<typeof WechatLoginSchema>;
 
+export const WechatWebLoginConfigSchema = z.object({
+  configured: z.boolean(),
+  devLoginAllowed: z.boolean(),
+  appId: z.string().optional()
+});
+export type WechatWebLoginConfig = z.infer<typeof WechatWebLoginConfigSchema>;
+
+export const GoogleLoginConfigSchema = z.object({
+  configured: z.boolean(),
+  devLoginAllowed: z.boolean(),
+  clientId: z.string().optional()
+});
+export type GoogleLoginConfig = z.infer<typeof GoogleLoginConfigSchema>;
+
+export const GoogleLoginSchema = z.object({
+  code: z.string().min(1),
+  redirectUri: z.string().url()
+});
+export type GoogleLoginInput = z.infer<typeof GoogleLoginSchema>;
+
 export const AuthSessionSchema = z.object({
   token: z.string(),
   userId: z.string(),
-  openid: z.string(),
+  authProvider: AuthProviderSchema,
+  providerUserId: z.string(),
+  openid: z.string().optional(),
   unionid: z.string().optional(),
   needsProfile: z.boolean(),
   user: AuthUserSchema,

@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "dev:client": "pnpm --filter @heart-message/client dev:h5",
+    "dev:client": "pnpm --filter @heart-message/client dev:web",
     "dev:admin": "pnpm --filter @heart-message/admin dev",
     "dev:api": "pnpm --filter @heart-message/api dev",
     "build": "pnpm -r build",

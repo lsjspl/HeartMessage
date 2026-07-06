@@ -10,12 +10,14 @@
     {
       "path": "pages/auth/login",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "登录"
       }
     },
     {
       "path": "pages/profile/setup",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "完善资料"
       }
     },

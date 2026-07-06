@@ -158,7 +158,7 @@ pnpm install --frozen-lockfile
 - Build command：
 
 ```bash
-pnpm build:h5
+pnpm build:web
 ```
 
 - Build output directory：
@@ -170,10 +170,8 @@ dist/build/h5
 Pages 环境变量：
 
 - `VITE_API_BASE_URL`：API Worker 的生产域名。
-- `VITE_WECHAT_APP_ID`：微信公众号网页授权 AppID。
-- `VITE_WECHAT_REDIRECT_URI`：微信网页授权回调地址。
 
-`VITE_WECHAT_APP_ID` 是公开 AppID，不是 secret。`WECHAT_APP_SECRET` 必须放在后台敏感配置，不能写进 Pages 变量或仓库。
+Web 微信扫码登录使用后台敏感配置中的 `WECHAT_WEB_APP_ID` 和 `WECHAT_WEB_APP_SECRET`。Google 登录使用后台敏感配置中的 `GOOGLE_OAUTH_CLIENT_ID` 和 `GOOGLE_OAUTH_CLIENT_SECRET`。前端只通过 API 读取公开配置状态，不能把 AppSecret 或 Client Secret 写进 Pages 变量或仓库。
 
 ## 首次上线后检查
 
@@ -181,7 +179,7 @@ Pages 环境变量：
 2. 打开后台 Pages，用默认账号 `admin` 和默认密码 `123456` 登录。
 3. 登录后立刻修改超级管理员密码。
 4. 进入系统参数，确认运行环境为 `production`；默认 CORS 为 `*`，需要收紧时再改为正式后台和用户端域名。
-5. 进入敏感配置，补齐微信和 AI Key。
+5. 进入敏感配置，补齐微信网站应用 AppID、AppSecret、Google OAuth Client ID、Google OAuth Client Secret 和 AI Key。
 6. 进入 AI 配置，添加供应商、模型和用途绑定。
 
 ## 本地验证
@@ -193,7 +191,7 @@ pnpm spec:validate
 pnpm typecheck
 pnpm --filter @heart-message/api build
 pnpm --filter @heart-message/admin build
-pnpm --filter @heart-message/client build:h5
+pnpm --filter @heart-message/client build:web
 ```
 
 不要把 `dist`、`.wrangler`、真实密钥、Cloudflare token 或本地日志提交到仓库。

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:h5": "uni -p h5",
-    "build:h5": "uni build -p h5",
+    "dev:web": "uni -p h5",
+    "build:web": "uni build -p h5",
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",
-    "build": "pnpm build:h5",
+    "build": "pnpm build:web",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {

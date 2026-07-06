@@ -101,7 +101,7 @@ pnpm dev:admin
 ### 3. 用户端手动测试路径
 
 1. 打开 http://localhost:5173。
-2. 点击微信登录。本地开发环境未配置微信 AppID 时，会自动使用开发登录 code。
+2. 打开登录页，使用 Google 登录或微信扫码登录；本地 API 未配置第三方登录时，点击本地开发登录。
 3. 完善资料：头像、昵称、年龄、个人介绍、性别。
 4. 扔瓶子：每天最多 3 个。
 5. 换一个浏览器或清理本地 token 后，再登录另一个开发用户。
@@ -148,7 +148,7 @@ node -e "const http=require('http');http.createServer((req,res)=>{let b='';req.o
 ```bash
 pnpm spec:validate
 pnpm typecheck
-pnpm --filter @heart-message/client build:h5
+pnpm --filter @heart-message/client build:web
 pnpm --filter @heart-message/admin build
 pnpm --filter @heart-message/api build
 ```
@@ -190,15 +190,17 @@ API Worker 需要配置：
 - `AUTH_TOKEN_SECRET`
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
-- `WECHAT_APP_ID`
-- `WECHAT_APP_SECRET`
+- `WECHAT_WEB_APP_ID`
+- `WECHAT_WEB_APP_SECRET`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
 - 各 AI 供应商密钥，例如 `OPENAI_API_KEY`、`DEEPSEEK_API_KEY`
 
 用户端 Pages 需要配置：
 
 - `VITE_API_BASE_URL`
-- `VITE_WECHAT_APP_ID`
-- `VITE_WECHAT_REDIRECT_URI`
+
+微信网站应用 AppID/AppSecret 和 Google OAuth Client ID/Client Secret 必须在后台敏感配置中维护，用户端通过 API 读取公开配置状态。
 
 管理后台 Pages 需要配置：
 
@@ -216,7 +218,7 @@ pnpm --filter @heart-message/api exec wrangler deploy
 ### 4. 部署用户端 Web/H5
 
 ```bash
-pnpm --filter @heart-message/client build:h5
+pnpm --filter @heart-message/client build:web
 pnpm --filter @heart-message/client exec wrangler pages deploy dist/build/h5 --project-name heart-message-client
 ```
 

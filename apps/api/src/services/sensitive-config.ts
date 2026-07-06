@@ -11,8 +11,10 @@ import { getSystemSettings } from "./settings";
 const CONFIG_DEFINITIONS: Array<{ key: SensitiveConfigKey; label: string }> = [
   { key: "AUTH_TOKEN_SECRET", label: "登录 Token 签名密钥" },
   { key: "LOCAL_TEST_MODEL_API_KEY", label: "本地测试 AI Key" },
-  { key: "WECHAT_APP_ID", label: "微信 App ID" },
-  { key: "WECHAT_APP_SECRET", label: "微信 App Secret" }
+  { key: "WECHAT_WEB_APP_ID", label: "微信网站应用 AppID" },
+  { key: "WECHAT_WEB_APP_SECRET", label: "微信网站应用 AppSecret" },
+  { key: "GOOGLE_OAUTH_CLIENT_ID", label: "Google OAuth Client ID" },
+  { key: "GOOGLE_OAUTH_CLIENT_SECRET", label: "Google OAuth Client Secret" }
 ];
 
 const LOCAL_DEFAULTS: Partial<Record<SensitiveConfigKey, string>> = {

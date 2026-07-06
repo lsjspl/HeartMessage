@@ -48,7 +48,26 @@ export const useSessionStore = defineStore("session", {
     async loginWithWechatCode(code: string) {
       const session = await apiRequest<AuthSession>("/v1/auth/wechat", {
         method: "POST",
-        data: { code }
+        data: {
+          code,
+          mode: "web_qr"
+        }
+      });
+
+      this.token = session.token;
+      this.user = session.user;
+      this.profile = session.profile;
+      setAuthToken(session.token);
+
+      return session;
+    },
+    async loginWithGoogleCode(code: string, redirectUri: string) {
+      const session = await apiRequest<AuthSession>("/v1/auth/google", {
+        method: "POST",
+        data: {
+          code,
+          redirectUri
+        }
       });
 
       this.token = session.token;
