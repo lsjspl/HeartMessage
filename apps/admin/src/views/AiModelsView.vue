@@ -87,18 +87,38 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="modelForm.id ? '编辑模型' : '新增模型'" width="560px">
+    <el-dialog v-model="dialogVisible" :title="modelForm.id ? '编辑模型' : '新增模型'" width="640px">
       <el-form class="modal-form" label-width="110px">
         <el-form-item label="供应商">
-          <el-select v-model="modelForm.providerId">
+          <el-select v-model="modelForm.providerId" @change="handleProviderChange">
             <el-option v-for="provider in providerOptions" :key="provider.id" :label="provider.name" :value="provider.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="展示名">
-          <el-input v-model="modelForm.displayName" />
+          <el-input v-model="modelForm.displayName" @input="handleDisplayNameInput" />
         </el-form-item>
         <el-form-item label="模型名">
-          <el-input v-model="modelForm.modelName" />
+          <div class="model-name-control">
+            <el-select
+              v-model="modelForm.modelName"
+              allow-create
+              clearable
+              default-first-option
+              filterable
+              placeholder="输入或选择模型名"
+              @change="handleModelNameChange"
+            >
+              <el-option v-for="model in providerModels" :key="model.id" :label="model.id" :value="model.id">
+                <div class="model-option">
+                  <span>{{ model.id }}</span>
+                  <small v-if="model.owner" class="model-option-owner">{{ model.owner }}</small>
+                </div>
+              </el-option>
+            </el-select>
+            <el-tooltip content="拉取当前供应商模型">
+              <el-button circle :icon="Download" :loading="loadingProviderModels" @click="fetchProviderModels" />
+            </el-tooltip>
+          </div>
         </el-form-item>
         <el-form-item label="用途类型">
           <el-select v-model="modelForm.purpose">
@@ -118,12 +138,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { Close, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
+import { Close, Download, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
 import type {
   AdminAiConfig,
   AdminAiModel,
+  AdminAiProviderModelOption,
+  AdminAiProviderModels,
   AdminAiProvider,
   AiModelPurpose,
   PaginatedList
@@ -146,11 +168,15 @@ const purposes: Array<{ label: string; value: AiModelPurpose }> = [
 
 const loading = ref(false);
 const savingModel = ref(false);
+const loadingProviderModels = ref(false);
 const dialogVisible = ref(false);
 const models = ref<AdminAiModel[]>([]);
 const providerOptions = ref<AdminAiProvider[]>([]);
+const providerModels = ref<AdminAiProviderModelOption[]>([]);
 const selectedRows = ref<AdminAiModel[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
+const displayNameEdited = ref(false);
+const lastAutoDisplayName = ref("");
 const pagination = reactive(createPaginationState());
 const filters = reactive({
   keyword: "",
@@ -173,6 +199,11 @@ onMounted(async () => {
   await loadModels();
 });
 
+watch(
+  () => modelForm.purpose,
+  () => syncDefaultDisplayName()
+);
+
 function purposeLabel(value: AiModelPurpose) {
   return purposes.find((purpose) => purpose.value === value)?.label ?? value;
 }
@@ -190,6 +221,9 @@ function clearSelection() {
 }
 
 function resetModelForm() {
+  providerModels.value = [];
+  displayNameEdited.value = false;
+  lastAutoDisplayName.value = "";
   Object.assign(modelForm, {
     id: "",
     providerId: providerOptions.value[0]?.id ?? "",
@@ -216,12 +250,76 @@ function openEdit(row: AdminAiModel) {
     isEnabled: row.isEnabled,
     configJson: row.configJson
   });
+  providerModels.value = [];
+  lastAutoDisplayName.value = buildDefaultDisplayName();
+  displayNameEdited.value = row.displayName !== lastAutoDisplayName.value;
   dialogVisible.value = true;
+}
+
+function buildDefaultDisplayName() {
+  const modelName = (modelForm.modelName || "").trim();
+
+  return modelName ? `${purposeLabel(modelForm.purpose)} ${modelName}` : "";
+}
+
+function syncDefaultDisplayName(force = false) {
+  const nextDisplayName = buildDefaultDisplayName();
+
+  if (!nextDisplayName) {
+    return;
+  }
+
+  const currentDisplayName = modelForm.displayName.trim();
+
+  if (force || !displayNameEdited.value || !currentDisplayName || currentDisplayName === lastAutoDisplayName.value) {
+    modelForm.displayName = nextDisplayName;
+    displayNameEdited.value = false;
+  }
+
+  lastAutoDisplayName.value = nextDisplayName;
+}
+
+function handleDisplayNameInput() {
+  displayNameEdited.value = modelForm.displayName.trim() !== lastAutoDisplayName.value;
+}
+
+function handleModelNameChange() {
+  syncDefaultDisplayName();
+}
+
+function handleProviderChange() {
+  providerModels.value = [];
 }
 
 async function loadProviderOptions() {
   const config = await adminRequest<AdminAiConfig>("/ai/config");
   providerOptions.value = config.providers;
+}
+
+async function fetchProviderModels() {
+  if (!modelForm.providerId) {
+    ElMessage.warning("先选择供应商");
+    return;
+  }
+
+  loadingProviderModels.value = true;
+
+  try {
+    const data = await adminRequest<AdminAiProviderModels>(
+      `/ai/providers/${encodeURIComponent(modelForm.providerId)}/models`
+    );
+    providerModels.value = data.models;
+
+    if (data.models.length) {
+      ElMessage.success(`已拉取 ${data.models.length} 个模型`);
+    } else {
+      ElMessage.warning("供应商没有返回可选模型");
+    }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "拉取模型失败");
+  } finally {
+    loadingProviderModels.value = false;
+  }
 }
 
 async function loadModels() {
@@ -254,6 +352,29 @@ async function handleSizeChange() {
 }
 
 async function saveModel() {
+  if (!modelForm.providerId) {
+    ElMessage.warning("先选择供应商");
+    return;
+  }
+
+  const modelName = (modelForm.modelName || "").trim();
+
+  if (!modelName) {
+    ElMessage.warning("请选择或输入模型名");
+    return;
+  }
+
+  if (!modelForm.displayName.trim()) {
+    syncDefaultDisplayName(true);
+  }
+
+  const displayName = modelForm.displayName.trim();
+
+  if (!displayName) {
+    ElMessage.warning("请填写展示名");
+    return;
+  }
+
   savingModel.value = true;
 
   try {
@@ -261,7 +382,9 @@ async function saveModel() {
       method: "POST",
       body: JSON.stringify({
         ...modelForm,
-        id: modelForm.id || undefined
+        id: modelForm.id || undefined,
+        displayName,
+        modelName
       })
     });
     dialogVisible.value = false;
@@ -274,3 +397,27 @@ async function saveModel() {
   }
 }
 </script>
+
+<style scoped>
+.model-name-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.model-name-control .el-select {
+  flex: 1;
+}
+
+.model-option {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.model-option-owner {
+  color: #8a94a6;
+  font-size: 12px;
+}
+</style>

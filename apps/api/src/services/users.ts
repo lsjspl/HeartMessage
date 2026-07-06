@@ -1,4 +1,10 @@
-import type { AuthProvider, CurrentUser, ProfileUpsertInput, UserProfile } from "@heart-message/shared";
+import type {
+  AuthIdentityProfile,
+  AuthProvider,
+  CurrentUser,
+  ProfileUpsertInput,
+  UserProfile
+} from "@heart-message/shared";
 import type { Env } from "../env";
 
 interface UserRow {
@@ -18,6 +24,13 @@ interface ProfileRow {
   bio: string | null;
   age: number | null;
   gender: "male" | "female" | "unknown";
+}
+
+interface AuthIdentityRow {
+  provider: AuthProvider;
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 export interface AuthIdentityInput {
@@ -51,6 +64,28 @@ export function mapProfile(row: ProfileRow | null): UserProfile | null {
     bio: row.bio || undefined,
     age: row.age || undefined,
     gender: row.gender
+  };
+}
+
+export function mapAuthIdentityProfile(row: AuthIdentityRow | null): AuthIdentityProfile | undefined {
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    provider: row.provider,
+    email: row.email || undefined,
+    displayName: row.display_name || undefined,
+    avatarUrl: row.avatar_url || undefined
+  };
+}
+
+export function mapAuthIdentityInput(input: AuthIdentityInput): AuthIdentityProfile {
+  return {
+    provider: input.provider,
+    email: input.email,
+    displayName: input.displayName,
+    avatarUrl: input.avatarUrl
   };
 }
 
@@ -150,6 +185,18 @@ export async function findProfileByUserId(env: Env, userId: string) {
     .first<ProfileRow>();
 }
 
+export async function findLatestAuthIdentityByUserId(env: Env, userId: string) {
+  return env.DB.prepare(
+    `SELECT provider, email, display_name, avatar_url
+     FROM user_auth_identities
+     WHERE user_id = ?
+     ORDER BY updated_at DESC
+     LIMIT 1`
+  )
+    .bind(userId)
+    .first<AuthIdentityRow>();
+}
+
 export async function upsertProfile(env: Env, userId: string, input: ProfileUpsertInput) {
   const now = Date.now();
 
@@ -187,11 +234,15 @@ export async function getCurrentUser(env: Env, userId: string): Promise<CurrentU
     throw new Error("用户不存在");
   }
 
-  const profile = await findProfileByUserId(env, userId);
+  const [profile, authIdentity] = await Promise.all([
+    findProfileByUserId(env, userId),
+    findLatestAuthIdentityByUserId(env, userId)
+  ]);
 
   return {
     user: mapUser(user),
     profile: mapProfile(profile),
-    needsProfile: !profile
+    needsProfile: !profile,
+    authIdentity: mapAuthIdentityProfile(authIdentity)
   };
 }

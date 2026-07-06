@@ -4,6 +4,7 @@ import {
   DAILY_PICK_LIMIT,
   DAILY_THROW_LIMIT,
   type AuthSession,
+  type AuthIdentityProfile,
   type AuthUser,
   type CurrentUser,
   type ProfileUpsertInput,
@@ -16,6 +17,7 @@ export const useSessionStore = defineStore("session", {
     token: getAuthToken(),
     user: null as AuthUser | null,
     profile: null as UserProfile | null,
+    authIdentity: null as AuthIdentityProfile | null,
     quotas: {
       pickRemaining: DAILY_PICK_LIMIT,
       throwRemaining: DAILY_THROW_LIMIT
@@ -35,6 +37,7 @@ export const useSessionStore = defineStore("session", {
     applyCurrentUser(current: CurrentUser) {
       this.user = current.user;
       this.profile = current.profile;
+      this.authIdentity = current.authIdentity ?? null;
     },
     setQuotas(pickRemaining: number, throwRemaining: number) {
       this.quotas = {
@@ -57,6 +60,7 @@ export const useSessionStore = defineStore("session", {
       this.token = session.token;
       this.user = session.user;
       this.profile = session.profile;
+      this.authIdentity = session.authIdentity ?? null;
       setAuthToken(session.token);
 
       return session;
@@ -73,6 +77,7 @@ export const useSessionStore = defineStore("session", {
       this.token = session.token;
       this.user = session.user;
       this.profile = session.profile;
+      this.authIdentity = session.authIdentity ?? null;
       setAuthToken(session.token);
 
       return session;
@@ -99,6 +104,7 @@ export const useSessionStore = defineStore("session", {
       this.token = "";
       this.user = null;
       this.profile = null;
+      this.authIdentity = null;
       clearAuthToken();
     }
   }

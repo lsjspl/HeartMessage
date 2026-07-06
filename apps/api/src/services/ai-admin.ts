@@ -1,16 +1,20 @@
+import { listModelsWithProvider } from "@heart-message/ai";
 import type {
   AdminAiConfig,
   AdminAiModel,
   AdminAiModelListQuery,
+  AdminAiProviderModels,
   AdminAiProvider,
   AdminAiProviderListQuery,
   AiModelUpsertInput,
   AiProviderUpsertInput,
   PaginatedList
 } from "@heart-message/shared";
+import { AppError } from "../errors";
 import type { Env } from "../env";
 import { createPaginatedList, paginationOffset } from "./pagination";
 import { getSystemSettings } from "./settings";
+import { getSensitiveConfigValue } from "./sensitive-config";
 
 interface ProviderRow {
   id: string;
@@ -131,6 +135,63 @@ export async function listAiProviders(
   ]);
 
   return createPaginatedList(result.results.map(mapProvider), countRow?.count ?? 0, query);
+}
+
+async function findAiProviderById(env: Env, providerId: string) {
+  return env.DB.prepare(
+    `SELECT id, name, adapter_type, base_url, api_key_secret_name, is_enabled, created_at, updated_at
+     FROM ai_providers
+     WHERE id = ?`
+  )
+    .bind(providerId)
+    .first<ProviderRow>();
+}
+
+export async function listAiProviderModels(env: Env, providerId: string): Promise<AdminAiProviderModels> {
+  const provider = await findAiProviderById(env, providerId);
+
+  if (!provider) {
+    throw new AppError(404, "AI_PROVIDER_NOT_FOUND", "AI 供应商不存在");
+  }
+
+  if (!provider.is_enabled) {
+    throw new AppError(409, "AI_PROVIDER_DISABLED", "AI 供应商已停用");
+  }
+
+  if (!provider.base_url) {
+    throw new AppError(422, "AI_PROVIDER_BASE_URL_REQUIRED", "AI 供应商未配置 baseUrl");
+  }
+
+  try {
+    const models = await listModelsWithProvider({
+      provider: provider.name,
+      adapterType: provider.adapter_type,
+      baseUrl: provider.base_url,
+      apiKey: await getSensitiveConfigValue(env, provider.api_key_secret_name)
+    });
+
+    return {
+      providerId: provider.id,
+      providerName: provider.name,
+      models: models
+        .map((model) => ({
+          id: model.id,
+          displayName: model.displayName,
+          owner: model.owner
+        }))
+        .sort((left, right) => left.id.localeCompare(right.id))
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError(
+      502,
+      "AI_PROVIDER_MODEL_LIST_FAILED",
+      error instanceof Error ? error.message : "AI 供应商模型拉取失败"
+    );
+  }
 }
 
 export async function listAiModels(

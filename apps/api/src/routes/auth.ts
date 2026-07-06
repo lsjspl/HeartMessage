@@ -6,6 +6,7 @@ import { exchangeWechatCode, getWechatWebLoginConfig } from "../services/wechat"
 import {
   findOrCreateUserByAuthIdentity,
   findProfileByUserId,
+  mapAuthIdentityInput,
   mapProfile,
   mapUser,
   type AuthIdentityInput
@@ -39,7 +40,8 @@ async function createAuthSessionResponse(
     ...extra,
     needsProfile: !profile,
     user: mapUser(user),
-    profile: mapProfile(profile)
+    profile: mapProfile(profile),
+    authIdentity: mapAuthIdentityInput(identity)
   };
 }
 

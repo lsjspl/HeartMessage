@@ -10,6 +10,20 @@ export interface AiModelConfig {
   options?: Record<string, unknown>;
 }
 
+export interface AiModelListConfig {
+  provider: string;
+  adapterType: string;
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+export interface AiProviderModelOption {
+  id: string;
+  displayName?: string;
+  owner?: string;
+  raw?: unknown;
+}
+
 export interface AiMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -35,6 +49,7 @@ export interface AiGenerateResult {
 
 export interface AiProviderAdapter {
   readonly name: string;
+  listModels?(config: AiModelListConfig): Promise<AiProviderModelOption[]>;
   generateText(
     config: AiModelConfig,
     messages: AiMessage[],
@@ -62,8 +77,55 @@ function getResponseText(data: unknown) {
   return typeof content === "string" ? content.trim() : "";
 }
 
+function mapOpenAiCompatibleModels(data: unknown): AiProviderModelOption[] {
+  const items = (data as { data?: unknown }).data;
+
+  if (!Array.isArray(items)) {
+    throw new Error("AI provider returned invalid model list");
+  }
+
+  const models: AiProviderModelOption[] = [];
+
+  for (const item of items) {
+    const record = item as { id?: unknown; owned_by?: unknown };
+
+    if (typeof record.id === "string" && record.id) {
+      models.push({
+        id: record.id,
+        displayName: record.id,
+        owner: typeof record.owned_by === "string" ? record.owned_by : undefined,
+        raw: item
+      });
+    }
+  }
+
+  return models;
+}
+
 const openAiCompatibleAdapter: AiProviderAdapter = {
   name: "openai_compatible",
+  async listModels(config) {
+    if (!config.baseUrl) {
+      throw new Error("AI provider baseUrl is required for openai_compatible adapter");
+    }
+
+    if (!config.apiKey) {
+      throw new Error("AI provider apiKey is required");
+    }
+
+    const response = await fetch(`${trimTrailingSlash(config.baseUrl)}/models`, {
+      headers: {
+        authorization: `Bearer ${config.apiKey}`
+      }
+    });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(`AI provider models request failed: ${response.status}`);
+    }
+
+    return mapOpenAiCompatibleModels(data);
+  },
   async generateText(config, messages, options) {
     if (!config.baseUrl) {
       throw new Error("AI provider baseUrl is required for openai_compatible adapter");
@@ -159,6 +221,20 @@ export async function generateWithProvider(
   }
 
   return adapter.generateText(config, messages, options);
+}
+
+export async function listModelsWithProvider(config: AiModelListConfig) {
+  const adapter = getAiProvider(config.adapterType);
+
+  if (!adapter) {
+    throw new Error(`AI provider adapter is not registered: ${config.adapterType}`);
+  }
+
+  if (!adapter.listModels) {
+    throw new Error(`AI provider adapter cannot list models: ${config.adapterType}`);
+  }
+
+  return adapter.listModels(config);
 }
 
 registerAiProvider(openAiCompatibleAdapter);

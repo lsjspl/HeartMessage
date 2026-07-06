@@ -8,6 +8,7 @@
       <view v-else class="avatar">{{ avatarInitial }}</view>
       <view class="avatar-actions">
         <text class="avatar-title">头像</text>
+        <text v-if="authEmail" class="auth-email">{{ authEmail }}</text>
         <button class="secondary-button small-button" :disabled="uploadingAvatar" @click="chooseAvatar">
           {{ uploadingAvatar ? "上传中" : "上传头像" }}
         </button>
@@ -65,7 +66,8 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import type { Gender } from "@heart-message/shared";
+import { onLoad } from "@dcloudio/uni-app";
+import type { AuthIdentityProfile, Gender, UserProfile } from "@heart-message/shared";
 import { DEFAULT_AVATAR_GROUPS, toAvatarPath, toDefaultAvatarUrl } from "../../constants/default-avatars";
 import { useSessionStore } from "../../stores/session";
 import { resolveAvatarContentType, uploadAvatarFile } from "../../services/uploads";
@@ -74,8 +76,8 @@ const session = useSessionStore();
 const loading = ref(false);
 const uploadingAvatar = ref(false);
 const form = reactive({
-  nickname: session.profile?.nickname ?? "",
-  avatarUrl: session.profile?.avatarUrl ?? "",
+  nickname: session.profile?.nickname ?? normalizeNickname(session.authIdentity?.displayName ?? ""),
+  avatarUrl: session.profile?.avatarUrl ?? session.authIdentity?.avatarUrl ?? "",
   age: session.profile?.age ? String(session.profile.age) : "",
   bio: session.profile?.bio ?? "",
   gender: (session.profile?.gender ?? "unknown") as Gender
@@ -87,6 +89,20 @@ const genderOptions: Array<{ label: string; value: Gender }> = [
 ];
 const defaultAvatarGroups = DEFAULT_AVATAR_GROUPS;
 const avatarInitial = computed(() => form.nickname.trim().slice(0, 1) || "漂");
+const authEmail = computed(() => session.authIdentity?.email || "");
+
+onLoad(async () => {
+  if (!session.token) {
+    return;
+  }
+
+  try {
+    const current = await session.fetchCurrentUser();
+    applyProfileDefaults(current?.profile ?? null, current?.authIdentity ?? null);
+  } catch {
+    applyProfileDefaults(session.profile, session.authIdentity);
+  }
+});
 
 interface ChosenImageFile {
   path?: string;
@@ -100,6 +116,29 @@ function normalizeTempFiles(files: unknown) {
 
 function getFileName(filePath: string, file?: ChosenImageFile) {
   return file?.name || filePath.split(/[\\/]/).pop() || "avatar.jpg";
+}
+
+function normalizeNickname(value: string) {
+  return value.trim().slice(0, 24);
+}
+
+function applyProfileDefaults(profile: UserProfile | null, authIdentity: AuthIdentityProfile | null) {
+  if (profile) {
+    form.nickname = profile.nickname;
+    form.avatarUrl = profile.avatarUrl ?? "";
+    form.age = profile.age ? String(profile.age) : "";
+    form.bio = profile.bio ?? "";
+    form.gender = profile.gender;
+    return;
+  }
+
+  if (!form.nickname && authIdentity?.displayName) {
+    form.nickname = normalizeNickname(authIdentity.displayName);
+  }
+
+  if (!form.avatarUrl && authIdentity?.avatarUrl) {
+    form.avatarUrl = authIdentity.avatarUrl;
+  }
 }
 
 async function chooseAvatar() {
@@ -212,6 +251,12 @@ async function submit() {
   font-weight: 900;
 }
 
+.auth-email {
+  color: #65758b;
+  font-size: 22rpx;
+  line-height: 1.35;
+}
+
 .small-button {
   width: 220rpx;
   height: 72rpx;
@@ -311,6 +356,10 @@ async function submit() {
 
   .avatar-title {
     font-size: 18px;
+  }
+
+  .auth-email {
+    font-size: 13px;
   }
 
   .default-avatar-card {

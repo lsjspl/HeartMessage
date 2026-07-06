@@ -84,6 +84,14 @@ export type AuthUser = z.infer<typeof AuthUserSchema>;
 export const AuthProviderSchema = z.enum(["wechat", "google"]);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
+export const AuthIdentityProfileSchema = z.object({
+  provider: AuthProviderSchema,
+  email: z.string().email().optional(),
+  displayName: z.string().max(120).optional(),
+  avatarUrl: z.string().url().optional()
+});
+export type AuthIdentityProfile = z.infer<typeof AuthIdentityProfileSchema>;
+
 export const WechatLoginModeSchema = z.enum(["web_qr"]);
 export type WechatLoginMode = z.infer<typeof WechatLoginModeSchema>;
 
@@ -123,14 +131,16 @@ export const AuthSessionSchema = z.object({
   unionid: z.string().optional(),
   needsProfile: z.boolean(),
   user: AuthUserSchema,
-  profile: UserProfileSchema.nullable()
+  profile: UserProfileSchema.nullable(),
+  authIdentity: AuthIdentityProfileSchema.optional()
 });
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
 
 export const CurrentUserSchema = z.object({
   user: AuthUserSchema,
   profile: UserProfileSchema.nullable(),
-  needsProfile: z.boolean()
+  needsProfile: z.boolean(),
+  authIdentity: AuthIdentityProfileSchema.optional()
 });
 export type CurrentUser = z.infer<typeof CurrentUserSchema>;
 
@@ -339,6 +349,10 @@ export const AdminUserListItemSchema = z.object({
   status: UserStatusSchema,
   nickname: z.string().optional(),
   avatarUrl: z.string().url().optional(),
+  email: z.string().email().optional(),
+  authProvider: AuthProviderSchema.optional(),
+  authDisplayName: z.string().max(120).optional(),
+  authAvatarUrl: z.string().url().optional(),
   profileCompleted: z.boolean(),
   createdAt: z.string()
 });
@@ -535,6 +549,20 @@ export const AdminAiModelSchema = z.object({
   updatedAt: z.string()
 });
 export type AdminAiModel = z.infer<typeof AdminAiModelSchema>;
+
+export const AdminAiProviderModelOptionSchema = z.object({
+  id: z.string(),
+  displayName: z.string().optional(),
+  owner: z.string().optional()
+});
+export type AdminAiProviderModelOption = z.infer<typeof AdminAiProviderModelOptionSchema>;
+
+export const AdminAiProviderModelsSchema = z.object({
+  providerId: z.string(),
+  providerName: z.string(),
+  models: z.array(AdminAiProviderModelOptionSchema)
+});
+export type AdminAiProviderModels = z.infer<typeof AdminAiProviderModelsSchema>;
 
 export const AdminAiConfigSchema = z.object({
   providers: z.array(AdminAiProviderSchema),

@@ -3,14 +3,14 @@
     <div class="page-head">
       <div>
         <h1>用户管理</h1>
-        <p>查看微信注册用户、资料完善状态和账号状态。</p>
+        <p>查看第三方登录用户、资料完善状态和账号状态。</p>
       </div>
     </div>
 
     <el-card shadow="never">
       <div class="table-toolbar">
         <div class="table-filters">
-          <el-input v-model="filters.keyword" clearable placeholder="用户 ID / 昵称" @keyup.enter="applyFilters" />
+          <el-input v-model="filters.keyword" clearable placeholder="用户 ID / 昵称 / 邮箱" @keyup.enter="applyFilters" />
           <el-select v-model="filters.role" clearable placeholder="角色">
             <el-option label="用户" value="user" />
             <el-option label="管理员" value="admin" />
@@ -49,10 +49,29 @@
       >
         <el-table-column type="selection" width="48" />
         <el-table-column type="index" label="序号" width="76" :index="indexMethod" />
-        <el-table-column prop="id" label="用户 ID" min-width="220" show-overflow-tooltip />
-        <el-table-column label="昵称" min-width="140">
+        <el-table-column label="用户" min-width="280">
           <template #default="{ row }">
-            {{ row.nickname || "未完善" }}
+            <div class="user-cell">
+              <el-avatar :size="42" :src="displayAvatar(row)">
+                {{ displayInitial(row) }}
+              </el-avatar>
+              <div class="user-copy">
+                <span class="user-name">{{ displayName(row) }}</span>
+                <span class="user-id">{{ row.id }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="邮箱" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.email || "未获取" }}
+          </template>
+        </el-table-column>
+        <el-table-column label="登录来源" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.authProvider === 'google' ? 'success' : 'info'">
+              {{ authProviderLabel(row.authProvider) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="role" label="角色" width="110" />
@@ -134,6 +153,30 @@ function formatTime(value: string) {
   return new Date(value).toLocaleString();
 }
 
+function displayName(row: AdminUserListItem) {
+  return row.nickname || row.authDisplayName || "未完善资料";
+}
+
+function displayAvatar(row: AdminUserListItem) {
+  return row.avatarUrl || row.authAvatarUrl || "";
+}
+
+function displayInitial(row: AdminUserListItem) {
+  return displayName(row).slice(0, 1);
+}
+
+function authProviderLabel(provider?: AdminUserListItem["authProvider"]) {
+  if (provider === "google") {
+    return "Google";
+  }
+
+  if (provider === "wechat") {
+    return "微信";
+  }
+
+  return "未知";
+}
+
 function indexMethod(index: number) {
   return (pagination.page - 1) * pagination.pageSize + index + 1;
 }
@@ -196,3 +239,35 @@ async function updateStatus(id: string, status: AdminUserStatusUpdateInput["stat
 
 onMounted(loadUsers);
 </script>
+
+<style scoped>
+.user-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.user-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.user-name {
+  overflow: hidden;
+  color: #1f2937;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-id {
+  overflow: hidden;
+  color: #8a94a6;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

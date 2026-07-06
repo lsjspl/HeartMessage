@@ -13,6 +13,7 @@ import { requireAdmin, type AuthVariables } from "../middleware/auth";
 import {
   listAiConfig,
   listAiModels,
+  listAiProviderModels,
   listAiProviders,
   upsertAiModel,
   upsertAiProvider
@@ -24,6 +25,9 @@ export const aiRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariabl
   .use("*", requireAdmin)
   .get("/config", async (context) => {
     return context.json(createOk(await listAiConfig(context.env)));
+  })
+  .get("/providers/:providerId/models", async (context) => {
+    return context.json(createOk(await listAiProviderModels(context.env, context.req.param("providerId"))));
   })
   .get("/providers", async (context) => {
     const query = AdminAiProviderListQuerySchema.parse(context.req.query());
