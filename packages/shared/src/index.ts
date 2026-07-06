@@ -528,7 +528,7 @@ export const AiModelUpsertSchema = z.object({
   providerId: z.string().min(1),
   displayName: z.string().min(1).max(120),
   modelName: z.string().min(1).max(160),
-  purpose: AiModelPurposeSchema,
+  purposes: z.array(AiModelPurposeSchema).min(1).max(10),
   isEnabled: z.boolean().default(true),
   configJson: z.record(z.string(), z.unknown()).default({})
 });
@@ -553,7 +553,7 @@ export const AdminAiModelSchema = z.object({
   providerName: z.string(),
   displayName: z.string(),
   modelName: z.string(),
-  purpose: AiModelPurposeSchema,
+  purposes: z.array(AiModelPurposeSchema),
   isEnabled: z.boolean(),
   configJson: z.record(z.string(), z.unknown()),
   createdAt: z.string(),

@@ -11,6 +11,7 @@ import {
 import type { Env } from "../env";
 import { requireAdmin, type AuthVariables } from "../middleware/auth";
 import {
+  deleteAiModel,
   listAiConfig,
   listAiModels,
   listAiProviderModels,
@@ -64,12 +65,27 @@ export const aiRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVariabl
       targetId: id,
       metadata: {
         providerId: input.providerId,
-        purpose: input.purpose,
+        purposes: input.purposes,
         isEnabled: input.isEnabled
       }
     });
 
     return context.json(createOk(await listAiConfig(context.env)));
+  })
+  .delete("/models/:modelId", async (context) => {
+    const result = await deleteAiModel(context.env, context.req.param("modelId"));
+
+    await writeOperationLog(context.env, {
+      actorId: context.get("userId"),
+      action: "ai.model.delete",
+      targetType: "ai_model",
+      targetId: result.id,
+      metadata: {
+        clearedPurposes: result.clearedPurposes
+      }
+    });
+
+    return context.json(createOk(result));
   })
   .put("/bindings", async (context) => {
     const bindings = AiPurposeBindingsSchema.parse(await context.req.json());

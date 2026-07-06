@@ -218,22 +218,15 @@ export const aiModels = sqliteTable(
       .references(() => aiProviders.id, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
     modelName: text("model_name").notNull(),
-    purpose: text("purpose", {
-      enum: [
-        "persona_generation",
-        "bottle_generation",
-        "chat_reply",
-        "content_moderation",
-        "user_profile_evaluation"
-      ]
-    }).notNull(),
+    purposesJson: text("purposes_json", { mode: "json" }).$type<string[]>().notNull().default([]),
     isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
     configJson: text("config_json", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
   },
   (table) => ({
-    purposeIdx: index("ai_models_purpose_idx").on(table.purpose, table.isEnabled)
+    enabledIdx: index("ai_models_enabled_idx").on(table.isEnabled),
+    providerModelIdx: uniqueIndex("ai_models_provider_model_unique_idx").on(table.providerId, table.modelName)
   })
 );
 

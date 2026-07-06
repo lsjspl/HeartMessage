@@ -59,7 +59,11 @@
         <el-table-column prop="modelName" label="模型名" min-width="180" show-overflow-tooltip />
         <el-table-column label="用途" width="170">
           <template #default="{ row }">
-            {{ purposeLabel(row.purpose) }}
+            <div class="purpose-tags">
+              <el-tag v-for="purpose in row.purposes" :key="purpose" size="small">
+                {{ purposeLabel(purpose) }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="启用" width="90">
@@ -67,10 +71,13 @@
             <el-tag :type="row.isEnabled ? 'success' : 'info'">{{ row.isEnabled ? "是" : "否" }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="96" fixed="right">
+        <el-table-column label="操作" width="136" fixed="right">
           <template #default="{ row }">
             <el-tooltip content="编辑">
               <el-button circle type="primary" :icon="Edit" @click="openEdit(row)" />
+            </el-tooltip>
+            <el-tooltip content="删除">
+              <el-button circle type="danger" :icon="Delete" @click="deleteModel(row)" />
             </el-tooltip>
           </template>
         </el-table-column>
@@ -121,7 +128,7 @@
           </div>
         </el-form-item>
         <el-form-item label="用途类型">
-          <el-select v-model="modelForm.purpose">
+          <el-select v-model="modelForm.purposes" multiple collapse-tags collapse-tags-tooltip>
             <el-option v-for="purpose in purposes" :key="purpose.value" :label="purpose.label" :value="purpose.value" />
           </el-select>
         </el-form-item>
@@ -139,8 +146,8 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from "vue";
-import { ElMessage } from "element-plus";
-import { Close, Download, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Close, Delete, Download, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
 import type {
   AdminAiConfig,
   AdminAiModel,
@@ -189,7 +196,7 @@ const modelForm = reactive({
   providerId: "",
   displayName: "",
   modelName: "",
-  purpose: "chat_reply" as AiModelPurpose,
+  purposes: ["chat_reply"] as AiModelPurpose[],
   isEnabled: true,
   configJson: {}
 });
@@ -200,7 +207,7 @@ onMounted(async () => {
 });
 
 watch(
-  () => modelForm.purpose,
+  () => modelForm.purposes.join(","),
   () => syncDefaultDisplayName()
 );
 
@@ -229,7 +236,7 @@ function resetModelForm() {
     providerId: providerOptions.value[0]?.id ?? "",
     displayName: "",
     modelName: "",
-    purpose: "chat_reply",
+    purposes: ["chat_reply"],
     isEnabled: true,
     configJson: {}
   });
@@ -246,7 +253,7 @@ function openEdit(row: AdminAiModel) {
     providerId: row.providerId,
     displayName: row.displayName,
     modelName: row.modelName,
-    purpose: row.purpose,
+    purposes: [...row.purposes],
     isEnabled: row.isEnabled,
     configJson: row.configJson
   });
@@ -258,8 +265,9 @@ function openEdit(row: AdminAiModel) {
 
 function buildDefaultDisplayName() {
   const modelName = (modelForm.modelName || "").trim();
+  const purposeText = modelForm.purposes.map(purposeLabel).join("/");
 
-  return modelName ? `${purposeLabel(modelForm.purpose)} ${modelName}` : "";
+  return modelName && purposeText ? `${purposeText} ${modelName}` : "";
 }
 
 function syncDefaultDisplayName(force = false) {
@@ -364,6 +372,11 @@ async function saveModel() {
     return;
   }
 
+  if (!modelForm.purposes.length) {
+    ElMessage.warning("请选择至少一个用途");
+    return;
+  }
+
   if (!modelForm.displayName.trim()) {
     syncDefaultDisplayName(true);
   }
@@ -384,7 +397,8 @@ async function saveModel() {
         ...modelForm,
         id: modelForm.id || undefined,
         displayName,
-        modelName
+        modelName,
+        purposes: modelForm.purposes
       })
     });
     dialogVisible.value = false;
@@ -394,6 +408,28 @@ async function saveModel() {
     ElMessage.error(error instanceof Error ? error.message : "保存模型失败");
   } finally {
     savingModel.value = false;
+  }
+}
+
+async function deleteModel(row: AdminAiModel) {
+  try {
+    await ElMessageBox.confirm(`确认删除模型「${row.displayName}」？`, "删除模型", {
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      type: "warning"
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await adminRequest(`/ai/models/${encodeURIComponent(row.id)}`, {
+      method: "DELETE"
+    });
+    ElMessage.success("模型已删除");
+    await loadModels();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "删除模型失败");
   }
 }
 </script>
@@ -419,5 +455,11 @@ async function saveModel() {
 .model-option-owner {
   color: #8a94a6;
   font-size: 12px;
+}
+
+.purpose-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 </style>

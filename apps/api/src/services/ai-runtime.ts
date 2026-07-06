@@ -12,7 +12,7 @@ interface AiRuntimeModelRow {
   base_url: string | null;
   api_key_secret_name: string;
   model_name: string;
-  purpose: AiModelPurpose;
+  purposes_json: string;
   config_json: string;
 }
 
@@ -44,12 +44,12 @@ async function resolveAiModel(env: Env, purpose: AiModelPurpose) {
        ai_providers.base_url,
        ai_providers.api_key_secret_name,
        ai_models.model_name,
-       ai_models.purpose,
+       ai_models.purposes_json,
        ai_models.config_json
      FROM ai_models
      JOIN ai_providers ON ai_providers.id = ai_models.provider_id
      WHERE ai_models.id = ?
-       AND ai_models.purpose = ?
+       AND EXISTS (SELECT 1 FROM json_each(ai_models.purposes_json) WHERE value = ?)
        AND ai_models.is_enabled = 1
        AND ai_providers.is_enabled = 1`
   )
@@ -75,7 +75,7 @@ export async function generateAiText(
       provider: row.provider_name,
       adapterType: row.adapter_type,
       model: row.model_name,
-      purpose: row.purpose,
+      purpose,
       baseUrl: row.base_url || undefined,
       apiKey: await getSensitiveConfigValue(env, row.api_key_secret_name),
       options: parseModelOptions(row.config_json)
@@ -91,7 +91,7 @@ export async function generateAiText(
       providerName: row.provider_name,
       adapterType: row.adapter_type,
       modelName: row.model_name,
-      purpose: row.purpose
+      purpose
     } satisfies ResolvedAiModel
   };
 }

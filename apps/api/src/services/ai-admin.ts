@@ -6,6 +6,7 @@ import type {
   AdminAiProviderModels,
   AdminAiProvider,
   AdminAiProviderListQuery,
+  AiModelPurpose,
   AiModelUpsertInput,
   AiProviderUpsertInput,
   PaginatedList
@@ -13,7 +14,7 @@ import type {
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { createPaginatedList, paginationOffset } from "./pagination";
-import { getSystemSettings } from "./settings";
+import { getSystemSettings, saveSystemSettings } from "./settings";
 import { getSensitiveConfigValue, saveSensitiveConfigValue } from "./sensitive-config";
 
 interface ProviderRow {
@@ -34,11 +35,16 @@ interface ModelRow {
   provider_name: string;
   display_name: string;
   model_name: string;
-  purpose: AdminAiModel["purpose"];
+  purposes_json: string;
   is_enabled: number;
   config_json: string;
   created_at: number;
   updated_at: number;
+}
+
+interface AiModelDeleteResult {
+  id: string;
+  clearedPurposes: AiModelPurpose[];
 }
 
 function mapProvider(row: ProviderRow): AdminAiProvider {
@@ -62,12 +68,34 @@ function mapModel(row: ModelRow): AdminAiModel {
     providerName: row.provider_name,
     displayName: row.display_name,
     modelName: row.model_name,
-    purpose: row.purpose,
+    purposes: parseModelPurposes(row.purposes_json),
     isEnabled: Boolean(row.is_enabled),
     configJson: JSON.parse(row.config_json || "{}") as Record<string, unknown>,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString()
   };
+}
+
+function parseModelPurposes(value: string) {
+  try {
+    const parsed = JSON.parse(value || "[]") as unknown;
+
+    if (Array.isArray(parsed)) {
+      const purposes = parsed.filter((item): item is AiModelPurpose => typeof item === "string");
+
+      if (purposes.length) {
+        return [...new Set(purposes)];
+      }
+    }
+  } catch {
+    throw new AppError(500, "AI_MODEL_PURPOSES_INVALID", "AI 模型用途配置无效");
+  }
+
+  throw new AppError(500, "AI_MODEL_PURPOSES_INVALID", "AI 模型用途配置无效");
+}
+
+function normalizePurposes(purposes: AiModelPurpose[]) {
+  return [...new Set(purposes)];
 }
 
 function providerApiKeySecretName(providerId: string) {
@@ -125,7 +153,7 @@ export async function listAiConfig(env: Env): Promise<AdminAiConfig> {
          ai_providers.name AS provider_name,
          ai_models.display_name,
          ai_models.model_name,
-         ai_models.purpose,
+         ai_models.purposes_json,
          ai_models.is_enabled,
          ai_models.config_json,
          ai_models.created_at,
@@ -279,7 +307,7 @@ export async function listAiModels(
   }
 
   if (query.purpose) {
-    conditions.push("ai_models.purpose = ?");
+    conditions.push("EXISTS (SELECT 1 FROM json_each(ai_models.purposes_json) WHERE value = ?)");
     params.push(query.purpose);
   }
 
@@ -302,7 +330,7 @@ export async function listAiModels(
          ai_providers.name AS provider_name,
          ai_models.display_name,
          ai_models.model_name,
-         ai_models.purpose,
+         ai_models.purposes_json,
          ai_models.is_enabled,
          ai_models.config_json,
          ai_models.created_at,
@@ -371,16 +399,31 @@ export async function upsertAiProvider(env: Env, input: AiProviderUpsertInput) {
 export async function upsertAiModel(env: Env, input: AiModelUpsertInput) {
   const now = Date.now();
   const id = input.id || crypto.randomUUID();
+  const purposes = normalizePurposes(input.purposes);
+  const existing = await env.DB.prepare(
+    `SELECT id
+     FROM ai_models
+     WHERE provider_id = ?
+       AND model_name = ?
+       AND id <> ?
+     LIMIT 1`
+  )
+    .bind(input.providerId, input.modelName, id)
+    .first<{ id: string }>();
+
+  if (existing) {
+    throw new AppError(409, "AI_MODEL_DUPLICATE", "同一供应商下该模型已存在");
+  }
 
   await env.DB.prepare(
     `INSERT INTO ai_models
-       (id, provider_id, display_name, model_name, purpose, is_enabled, config_json, created_at, updated_at)
+       (id, provider_id, display_name, model_name, purposes_json, is_enabled, config_json, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        provider_id = excluded.provider_id,
        display_name = excluded.display_name,
        model_name = excluded.model_name,
-       purpose = excluded.purpose,
+       purposes_json = excluded.purposes_json,
        is_enabled = excluded.is_enabled,
        config_json = excluded.config_json,
        updated_at = excluded.updated_at`
@@ -390,7 +433,7 @@ export async function upsertAiModel(env: Env, input: AiModelUpsertInput) {
       input.providerId,
       input.displayName,
       input.modelName,
-      input.purpose,
+      JSON.stringify(purposes),
       input.isEnabled ? 1 : 0,
       JSON.stringify(input.configJson),
       now,
@@ -399,4 +442,43 @@ export async function upsertAiModel(env: Env, input: AiModelUpsertInput) {
     .run();
 
   return id;
+}
+
+export async function deleteAiModel(env: Env, modelId: string): Promise<AiModelDeleteResult> {
+  const model = await env.DB.prepare("SELECT id, purposes_json FROM ai_models WHERE id = ?")
+    .bind(modelId)
+    .first<{ id: string; purposes_json: string }>();
+
+  if (!model) {
+    throw new AppError(404, "AI_MODEL_NOT_FOUND", "AI 模型不存在");
+  }
+
+  const settings = await getSystemSettings(env);
+  const purposes = parseModelPurposes(model.purposes_json);
+  const nextBindings = { ...settings.aiBindings };
+  const clearedPurposes: AiModelPurpose[] = [];
+
+  for (const purpose of purposes) {
+    if (nextBindings[purpose] === modelId) {
+      delete nextBindings[purpose];
+      clearedPurposes.push(purpose);
+    }
+  }
+
+  await env.DB.prepare("UPDATE content_moderation_events SET model_id = NULL WHERE model_id = ?")
+    .bind(modelId)
+    .run();
+  await env.DB.prepare("DELETE FROM ai_models WHERE id = ?").bind(modelId).run();
+
+  if (clearedPurposes.length) {
+    await saveSystemSettings(env, {
+      ...settings,
+      aiBindings: nextBindings
+    });
+  }
+
+  return {
+    id: modelId,
+    clearedPurposes
+  };
 }

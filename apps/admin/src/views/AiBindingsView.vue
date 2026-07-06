@@ -62,7 +62,7 @@ function syncBindings(nextBindings: AdminAiConfig["bindings"]) {
 }
 
 function modelsForPurpose(purpose: AiModelPurpose) {
-  return config.models.filter((model) => model.purpose === purpose && model.isEnabled);
+  return config.models.filter((model) => model.purposes.includes(purpose) && model.isEnabled);
 }
 
 async function loadConfig() {
