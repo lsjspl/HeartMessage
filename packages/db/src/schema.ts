@@ -81,6 +81,8 @@ export const systemSettings = sqliteTable("system_settings", {
 export const sensitiveConfigs = sqliteTable("sensitive_configs", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
+  label: text("label"),
+  groupName: text("group_name").notNull().default("自定义"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
 });

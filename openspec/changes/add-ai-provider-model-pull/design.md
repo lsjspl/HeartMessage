@@ -8,6 +8,8 @@
 
 接口读取 `ai_providers` 中的供应商配置，使用该供应商的 `adapter_type` 选择适配器，并通过 `api_key_secret_name` 从后台敏感配置读取 API Key。接口只返回模型标识、展示名和归属摘要，不返回密钥。
 
+敏感配置支持名称和分组。供应商表单引用 API Key 时必须使用敏感配置键下拉，按分组展示可选项；管理员也可以在供应商表单填写新的 API Key，保存时只写入后台敏感配置，不在供应商列表、详情或编辑表单中回显真实值。
+
 ## 适配器设计
 
 `packages/ai` 的供应商适配器增加 `listModels` 能力。首个实现仍为 `openai_compatible`，请求 `{baseUrl}/models`，解析 OpenAI-compatible 响应中的 `data[].id`。

@@ -16,6 +16,9 @@
             <el-option label="本地默认" value="local_default" />
             <el-option label="未配置" value="missing" />
           </el-select>
+          <el-select v-model="filters.groupName" clearable placeholder="分组">
+            <el-option v-for="group in groupOptions" :key="group" :label="group" :value="group" />
+          </el-select>
           <div class="filter-actions">
             <el-tooltip content="搜索">
               <el-button circle :icon="Search" @click="applyFilters" />
@@ -48,6 +51,7 @@
       >
         <el-table-column type="selection" width="48" />
         <el-table-column type="index" label="序号" width="76" :index="indexMethod" />
+        <el-table-column prop="groupName" label="分组" width="140" />
         <el-table-column prop="key" label="配置键" min-width="220" show-overflow-tooltip />
         <el-table-column prop="label" label="名称" min-width="180" />
         <el-table-column label="来源" width="120">
@@ -91,7 +95,12 @@
           <el-input v-model="form.key" :disabled="form.locked" placeholder="OPENAI_API_KEY" />
         </el-form-item>
         <el-form-item label="名称">
-          <el-input v-model="form.label" disabled />
+          <el-input v-model="form.label" placeholder="配置名称" />
+        </el-form-item>
+        <el-form-item label="分组">
+          <el-select v-model="form.groupName" allow-create filterable default-first-option placeholder="选择或输入分组">
+            <el-option v-for="group in groupOptions" :key="group" :label="group" :value="group" />
+          </el-select>
         </el-form-item>
         <el-form-item label="配置值">
           <el-input v-model="form.value" type="password" show-password placeholder="输入新的配置值" />
@@ -122,14 +131,22 @@ const dialogVisible = ref(false);
 const pagination = reactive(createPaginationState());
 const filters = reactive({
   keyword: "",
-  source: ""
+  source: "",
+  groupName: ""
 });
 const form = reactive({
   key: "",
   label: "",
+  groupName: "自定义",
   value: "",
   locked: false
 });
+
+const groupOptions = computed(() =>
+  [...new Set(configs.value.map((item) => item.groupName || "自定义"))].sort((left, right) =>
+    left.localeCompare(right)
+  )
+);
 
 const filteredConfigs = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase();
@@ -140,8 +157,9 @@ const filteredConfigs = computed(() => {
       item.key.toLowerCase().includes(keyword) ||
       item.label.toLowerCase().includes(keyword);
     const matchesSource = !filters.source || item.source === filters.source;
+    const matchesGroup = !filters.groupName || item.groupName === filters.groupName;
 
-    return matchesKeyword && matchesSource;
+    return matchesKeyword && matchesSource && matchesGroup;
   });
 });
 
@@ -206,7 +224,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  Object.assign(filters, { keyword: "", source: "" });
+  Object.assign(filters, { keyword: "", source: "", groupName: "" });
   pagination.page = 1;
   clearSelection();
 }
@@ -219,6 +237,7 @@ function openCreate() {
   Object.assign(form, {
     key: "",
     label: "自定义敏感配置",
+    groupName: "自定义",
     value: "",
     locked: false
   });
@@ -229,6 +248,7 @@ function openEdit(row: SensitiveConfigItem) {
   Object.assign(form, {
     key: row.key,
     label: row.label,
+    groupName: row.groupName || "自定义",
     value: "",
     locked: true
   });
@@ -250,6 +270,8 @@ async function saveConfig() {
         method: "PUT",
         body: JSON.stringify({
           key: form.key,
+          label: form.label || form.key,
+          groupName: form.groupName || "自定义",
           value: form.value
         })
       }

@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1>AI 供应商</h1>
-        <p>维护 OpenAI 兼容供应商，API Key 值在系统设置的敏感配置中维护。</p>
+        <p>维护 OpenAI 兼容供应商，API Key 只写入敏感配置，不回显明文。</p>
       </div>
     </div>
 
@@ -51,7 +51,13 @@
         <el-table-column prop="name" label="名称" min-width="160" />
         <el-table-column prop="adapterType" label="适配器" width="150" />
         <el-table-column prop="baseUrl" label="Base URL" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="apiKeySecretName" label="敏感配置键" min-width="160" />
+        <el-table-column label="API Key" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.apiKeyConfigured ? 'success' : 'danger'">
+              {{ row.apiKeyConfigured ? "已设置" : "未设置" }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="启用" width="90">
           <template #default="{ row }">
             <el-tag :type="row.isEnabled ? 'success' : 'info'">{{ row.isEnabled ? "是" : "否" }}</el-tag>
@@ -90,8 +96,30 @@
         <el-form-item label="Base URL">
           <el-input v-model="providerForm.baseUrl" placeholder="https://api.example.com/v1" />
         </el-form-item>
-        <el-form-item label="敏感配置键">
-          <el-input v-model="providerForm.apiKeySecretName" placeholder="OPENAI_API_KEY" />
+        <el-form-item label="API Key 配置">
+          <el-select
+            v-model="providerForm.apiKeySecretName"
+            clearable
+            filterable
+            placeholder="选择已有敏感配置，留空则自动创建"
+          >
+            <el-option-group v-for="group in sensitiveConfigGroups" :key="group.name" :label="group.name">
+              <el-option
+                v-for="config in group.items"
+                :key="config.key"
+                :label="configOptionLabel(config)"
+                :value="config.key"
+              />
+            </el-option-group>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="新 API Key">
+          <el-input
+            v-model="providerForm.apiKey"
+            type="password"
+            show-password
+            placeholder="填写后保存，留空则不修改"
+          />
         </el-form-item>
         <el-form-item label="启用">
           <el-switch v-model="providerForm.isEnabled" />
@@ -106,10 +134,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { Close, Edit, Plus, Refresh, RefreshLeft, Search } from "@element-plus/icons-vue";
-import type { AdminAiConfig, AdminAiProvider, PaginatedList } from "@heart-message/shared";
+import type { AdminAiConfig, AdminAiProvider, PaginatedList, SensitiveConfigItem } from "@heart-message/shared";
 import { adminRequest } from "../services/api";
 import {
   adminPageSizes,
@@ -122,6 +150,7 @@ const loading = ref(false);
 const savingProvider = ref(false);
 const dialogVisible = ref(false);
 const providers = ref<AdminAiProvider[]>([]);
+const sensitiveConfigs = ref<SensitiveConfigItem[]>([]);
 const selectedRows = ref<AdminAiProvider[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const pagination = reactive(createPaginationState());
@@ -135,10 +164,31 @@ const providerForm = reactive({
   adapterType: "openai_compatible",
   baseUrl: "",
   apiKeySecretName: "",
+  apiKey: "",
   isEnabled: true
 });
 
-onMounted(loadProviders);
+const sensitiveConfigGroups = computed(() => {
+  const groups = new Map<string, SensitiveConfigItem[]>();
+
+  for (const config of sensitiveConfigs.value) {
+    const name = config.groupName || "自定义";
+    groups.set(name, [...(groups.get(name) ?? []), config]);
+  }
+
+  return [...groups.entries()].map(([name, items]) => ({
+    name,
+    items: items.sort((left, right) => left.label.localeCompare(right.label) || left.key.localeCompare(right.key))
+  }));
+});
+
+onMounted(async () => {
+  await Promise.all([loadProviders(), loadSensitiveConfigs()]);
+});
+
+function configOptionLabel(config: SensitiveConfigItem) {
+  return `${config.label} (${config.key})`;
+}
 
 function indexMethod(index: number) {
   return (pagination.page - 1) * pagination.pageSize + index + 1;
@@ -159,6 +209,7 @@ function resetProviderForm() {
     adapterType: "openai_compatible",
     baseUrl: "",
     apiKeySecretName: "",
+    apiKey: "",
     isEnabled: true
   });
 }
@@ -174,7 +225,8 @@ function openEdit(row: AdminAiProvider) {
     name: row.name,
     adapterType: row.adapterType,
     baseUrl: row.baseUrl || "",
-    apiKeySecretName: row.apiKeySecretName,
+    apiKeySecretName: row.apiKeySecretName || "",
+    apiKey: "",
     isEnabled: row.isEnabled
   });
   dialogVisible.value = true;
@@ -192,6 +244,10 @@ async function loadProviders() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadSensitiveConfigs() {
+  sensitiveConfigs.value = await adminRequest<SensitiveConfigItem[]>("/settings/sensitive");
 }
 
 async function applyFilters() {
@@ -218,12 +274,14 @@ async function saveProvider() {
       body: JSON.stringify({
         ...providerForm,
         id: providerForm.id || undefined,
-        baseUrl: providerForm.baseUrl || undefined
+        baseUrl: providerForm.baseUrl || undefined,
+        apiKeySecretName: providerForm.apiKeySecretName || undefined,
+        apiKey: providerForm.apiKey || undefined
       })
     });
     dialogVisible.value = false;
     ElMessage.success("供应商已保存");
-    await loadProviders();
+    await Promise.all([loadProviders(), loadSensitiveConfigs()]);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "保存供应商失败");
   } finally {

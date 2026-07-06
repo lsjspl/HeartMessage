@@ -468,7 +468,13 @@ export const SystemRuntimeSettingsSchema = z.object({
 });
 export type SystemRuntimeSettings = z.infer<typeof SystemRuntimeSettingsSchema>;
 
-export const SensitiveConfigKeySchema = z.string().trim().min(1).max(120).regex(/^[a-zA-Z0-9_.-]+$/);
+export const SensitiveConfigKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(/^[a-zA-Z0-9_.-]+$/)
+  .refine((value) => !value.startsWith("sk-"), "敏感配置键不能是 API Key 明文");
 export type SensitiveConfigKey = z.infer<typeof SensitiveConfigKeySchema>;
 
 export const SensitiveConfigSourceSchema = z.enum(["custom", "local_default", "missing"]);
@@ -477,6 +483,7 @@ export type SensitiveConfigSource = z.infer<typeof SensitiveConfigSourceSchema>;
 export const SensitiveConfigItemSchema = z.object({
   key: SensitiveConfigKeySchema,
   label: z.string(),
+  groupName: z.string(),
   configured: z.boolean(),
   source: SensitiveConfigSourceSchema,
   valuePreview: z.string().optional(),
@@ -486,6 +493,8 @@ export type SensitiveConfigItem = z.infer<typeof SensitiveConfigItemSchema>;
 
 export const SensitiveConfigUpsertSchema = z.object({
   key: SensitiveConfigKeySchema,
+  label: z.string().trim().min(1).max(120).optional(),
+  groupName: z.string().trim().min(1).max(80).optional(),
   value: z.string().min(1).max(4000)
 });
 export type SensitiveConfigUpsertInput = z.infer<typeof SensitiveConfigUpsertSchema>;
@@ -508,7 +517,8 @@ export const AiProviderUpsertSchema = z.object({
   name: z.string().min(1).max(80),
   adapterType: AiProviderAdapterTypeSchema.default("openai_compatible"),
   baseUrl: z.string().url().optional(),
-  apiKeySecretName: z.string().min(1).max(120),
+  apiKeySecretName: SensitiveConfigKeySchema.optional(),
+  apiKey: z.string().min(1).max(4000).optional(),
   isEnabled: z.boolean().default(true)
 });
 export type AiProviderUpsertInput = z.infer<typeof AiProviderUpsertSchema>;
@@ -529,7 +539,8 @@ export const AdminAiProviderSchema = z.object({
   name: z.string(),
   adapterType: AiProviderAdapterTypeSchema,
   baseUrl: z.string().optional(),
-  apiKeySecretName: z.string(),
+  apiKeySecretName: SensitiveConfigKeySchema.optional(),
+  apiKeyConfigured: z.boolean(),
   isEnabled: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string()

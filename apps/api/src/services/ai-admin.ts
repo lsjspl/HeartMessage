@@ -14,7 +14,7 @@ import { AppError } from "../errors";
 import type { Env } from "../env";
 import { createPaginatedList, paginationOffset } from "./pagination";
 import { getSystemSettings } from "./settings";
-import { getSensitiveConfigValue } from "./sensitive-config";
+import { getSensitiveConfigValue, saveSensitiveConfigValue } from "./sensitive-config";
 
 interface ProviderRow {
   id: string;
@@ -22,6 +22,7 @@ interface ProviderRow {
   adapter_type: AdminAiProvider["adapterType"];
   base_url: string | null;
   api_key_secret_name: string;
+  api_key_configured?: number;
   is_enabled: number;
   created_at: number;
   updated_at: number;
@@ -46,7 +47,8 @@ function mapProvider(row: ProviderRow): AdminAiProvider {
     name: row.name,
     adapterType: row.adapter_type,
     baseUrl: row.base_url || undefined,
-    apiKeySecretName: row.api_key_secret_name,
+    apiKeySecretName: isLikelyRawApiKey(row.api_key_secret_name) ? undefined : row.api_key_secret_name,
+    apiKeyConfigured: Boolean(row.api_key_configured),
     isEnabled: Boolean(row.is_enabled),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString()
@@ -68,12 +70,53 @@ function mapModel(row: ModelRow): AdminAiModel {
   };
 }
 
+function providerApiKeySecretName(providerId: string) {
+  return `AI_PROVIDER_${providerId.replace(/[^a-zA-Z0-9_.-]/g, "_").toUpperCase()}_API_KEY`;
+}
+
+function isLikelyRawApiKey(value: string) {
+  return value.startsWith("sk-");
+}
+
+async function normalizeProviderApiKeySecretName(env: Env, provider: ProviderRow) {
+  if (!isLikelyRawApiKey(provider.api_key_secret_name)) {
+    return provider.api_key_secret_name;
+  }
+
+  const secretName = providerApiKeySecretName(provider.id);
+  const now = Date.now();
+
+  await saveSensitiveConfigValue(env, secretName, provider.api_key_secret_name, {
+    label: `${provider.name} API Key`,
+    groupName: "AI 供应商"
+  });
+  await env.DB.prepare("UPDATE ai_providers SET api_key_secret_name = ?, updated_at = ? WHERE id = ?")
+    .bind(secretName, now, provider.id)
+    .run();
+
+  return secretName;
+}
+
 export async function listAiConfig(env: Env): Promise<AdminAiConfig> {
   const [providersResult, modelsResult, settings] = await Promise.all([
     env.DB.prepare(
-      `SELECT id, name, adapter_type, base_url, api_key_secret_name, is_enabled, created_at, updated_at
+      `SELECT
+         ai_providers.id,
+         ai_providers.name,
+         ai_providers.adapter_type,
+         ai_providers.base_url,
+         ai_providers.api_key_secret_name,
+         CASE
+           WHEN sensitive_configs.value IS NOT NULL AND sensitive_configs.value <> '' THEN 1
+           WHEN ai_providers.api_key_secret_name LIKE 'sk-%' THEN 1
+           ELSE 0
+         END AS api_key_configured,
+         ai_providers.is_enabled,
+         ai_providers.created_at,
+         ai_providers.updated_at
        FROM ai_providers
-       ORDER BY created_at DESC`
+       LEFT JOIN sensitive_configs ON sensitive_configs.key = ai_providers.api_key_secret_name
+       ORDER BY ai_providers.created_at DESC`
     ).all<ProviderRow>(),
     env.DB.prepare(
       `SELECT
@@ -109,8 +152,8 @@ export async function listAiProviders(
   const params: unknown[] = [];
 
   if (query.keyword) {
-    conditions.push("(id LIKE ? OR name LIKE ? OR base_url LIKE ? OR api_key_secret_name LIKE ?)");
-    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+    conditions.push("(id LIKE ? OR name LIKE ? OR base_url LIKE ?)");
+    params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
   }
 
   if (query.isEnabled) {
@@ -124,10 +167,24 @@ export async function listAiProviders(
       .bind(...params)
       .first<{ count: number }>(),
     env.DB.prepare(
-      `SELECT id, name, adapter_type, base_url, api_key_secret_name, is_enabled, created_at, updated_at
+      `SELECT
+         ai_providers.id,
+         ai_providers.name,
+         ai_providers.adapter_type,
+         ai_providers.base_url,
+         ai_providers.api_key_secret_name,
+         CASE
+           WHEN sensitive_configs.value IS NOT NULL AND sensitive_configs.value <> '' THEN 1
+           WHEN ai_providers.api_key_secret_name LIKE 'sk-%' THEN 1
+           ELSE 0
+         END AS api_key_configured,
+         ai_providers.is_enabled,
+         ai_providers.created_at,
+         ai_providers.updated_at
        FROM ai_providers
+       LEFT JOIN sensitive_configs ON sensitive_configs.key = ai_providers.api_key_secret_name
        ${whereSql}
-       ORDER BY created_at DESC
+       ORDER BY ai_providers.created_at DESC
        LIMIT ? OFFSET ?`
     )
       .bind(...params, query.pageSize, paginationOffset(query))
@@ -163,11 +220,13 @@ export async function listAiProviderModels(env: Env, providerId: string): Promis
   }
 
   try {
+    const apiKeySecretName = await normalizeProviderApiKeySecretName(env, provider);
+    const apiKey = await getSensitiveConfigValue(env, apiKeySecretName);
     const models = await listModelsWithProvider({
       provider: provider.name,
       adapterType: provider.adapter_type,
       baseUrl: provider.base_url,
-      apiKey: await getSensitiveConfigValue(env, provider.api_key_secret_name)
+      apiKey
     });
 
     return {
@@ -182,6 +241,14 @@ export async function listAiProviderModels(env: Env, providerId: string): Promis
         .sort((left, right) => left.id.localeCompare(right.id))
     };
   } catch (error) {
+    if (error instanceof AppError && error.code === "SENSITIVE_CONFIG_NOT_CONFIGURED") {
+      throw new AppError(
+        409,
+        "AI_PROVIDER_API_KEY_NOT_CONFIGURED",
+        `供应商「${provider.name}」的 API Key 未配置：请编辑供应商填写 API Key`
+      );
+    }
+
     if (error instanceof AppError) {
       throw error;
     }
@@ -256,6 +323,24 @@ export async function upsertAiProvider(env: Env, input: AiProviderUpsertInput) {
   const now = Date.now();
   const id = input.id || crypto.randomUUID();
 
+  if (input.apiKeySecretName && isLikelyRawApiKey(input.apiKeySecretName)) {
+    throw new AppError(422, "AI_PROVIDER_SECRET_KEY_INVALID", "请选择敏感配置键，不要填写 API Key 明文");
+  }
+
+  const existingProvider = input.id ? await findAiProviderById(env, input.id) : null;
+  const normalizedExistingSecretName = existingProvider
+    ? await normalizeProviderApiKeySecretName(env, existingProvider)
+    : undefined;
+  const apiKeySecretName =
+    input.apiKeySecretName ?? normalizedExistingSecretName ?? providerApiKeySecretName(id);
+
+  if (input.apiKey) {
+    await saveSensitiveConfigValue(env, apiKeySecretName, input.apiKey, {
+      label: `${input.name} API Key`,
+      groupName: "AI 供应商"
+    });
+  }
+
   await env.DB.prepare(
       `INSERT INTO ai_providers
        (id, name, adapter_type, base_url, api_key_secret_name, is_enabled, created_at, updated_at)
@@ -273,7 +358,7 @@ export async function upsertAiProvider(env: Env, input: AiProviderUpsertInput) {
       input.name,
       input.adapterType,
       input.baseUrl ?? null,
-      input.apiKeySecretName,
+      apiKeySecretName,
       input.isEnabled ? 1 : 0,
       now,
       now

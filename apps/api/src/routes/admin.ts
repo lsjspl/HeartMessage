@@ -111,7 +111,10 @@ export const adminRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVari
       );
     }
 
-    const items = await saveSensitiveConfigValue(context.env, input.key, input.value);
+    const items = await saveSensitiveConfigValue(context.env, input.key, input.value, {
+      label: input.label,
+      groupName: input.groupName
+    });
 
     await writeOperationLog(context.env, {
       actorId: context.get("userId"),
