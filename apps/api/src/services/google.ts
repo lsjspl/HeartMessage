@@ -6,6 +6,16 @@ import { getOptionalSensitiveConfigValue } from "./sensitive-config";
 
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo";
+const GOOGLE_CALLBACK_QUERY_KEYS = [
+  "code",
+  "state",
+  "scope",
+  "authuser",
+  "prompt",
+  "iss",
+  "error",
+  "error_description"
+];
 
 interface GoogleTokenResponse {
   access_token?: string;
@@ -58,6 +68,16 @@ function createDevIdentity(code: string): GoogleIdentity {
     email: `${id}@local.google.invalid`,
     displayName: "本地 Google 用户"
   };
+}
+
+function normalizeGoogleRedirectUri(redirectUri: string) {
+  const url = new URL(redirectUri);
+
+  for (const key of GOOGLE_CALLBACK_QUERY_KEYS) {
+    url.searchParams.delete(key);
+  }
+
+  return url.toString();
 }
 
 async function getGoogleCredentials(env: Env): Promise<GoogleCredentials> {
@@ -158,7 +178,7 @@ export async function exchangeGoogleCode(
       clientSecret: credentials.clientSecret!
     },
     code,
-    redirectUri
+    normalizeGoogleRedirectUri(redirectUri)
   );
 
   return fetchGoogleUserInfo(accessToken);

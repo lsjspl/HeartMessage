@@ -323,6 +323,9 @@ function getAuthRedirectUri() {
   url.searchParams.delete("scope");
   url.searchParams.delete("authuser");
   url.searchParams.delete("prompt");
+  url.searchParams.delete("iss");
+  url.searchParams.delete("error");
+  url.searchParams.delete("error_description");
   return url.toString();
 }
 
