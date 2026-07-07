@@ -1,4 +1,4 @@
-import type { BottleAuthor, ChatListItem, ChatMessage, ConversationMessages, SendMessageInput } from "@heart-message/shared";
+import { selectAiPersonaAvatarPath, type BottleAuthor, type ChatListItem, type ChatMessage, type ConversationMessages, type SendMessageInput } from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { generateAiReplyForConversation } from "./ai-companion";
@@ -21,6 +21,7 @@ interface ConversationRow {
   ai_persona_id: string | null;
   ai_display_name: string | null;
   ai_bio: string | null;
+  ai_avatar_url: string | null;
   ai_age: number | null;
   ai_gender: "male" | "female" | "unknown" | null;
 }
@@ -48,6 +49,9 @@ function peerAuthor(row: ConversationRow): BottleAuthor {
     return {
       id: row.ai_persona_id,
       nickname: row.ai_display_name || "潮汐来信",
+      avatarUrl:
+        row.ai_avatar_url ||
+        selectAiPersonaAvatarPath(row.ai_persona_id, row.ai_gender || "unknown"),
       bio: row.ai_bio || undefined,
       age: row.ai_age || undefined,
       gender: row.ai_gender || "unknown"
@@ -78,6 +82,7 @@ async function getVisibleConversation(env: Env, userId: string, conversationId: 
        ai_personas.id AS ai_persona_id,
        ai_personas.display_name AS ai_display_name,
        ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
        ai_personas.age AS ai_age,
        ai_personas.gender AS ai_gender
      FROM conversations
@@ -122,6 +127,7 @@ export async function listChats(env: Env, userId: string): Promise<ChatListItem[
        ai_personas.id AS ai_persona_id,
        ai_personas.display_name AS ai_display_name,
        ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
        ai_personas.age AS ai_age,
        ai_personas.gender AS ai_gender,
        (

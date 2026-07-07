@@ -237,6 +237,7 @@ export const aiPersonas = sqliteTable(
     targetUserId: text("target_user_id").references(() => users.id, { onDelete: "set null" }),
     displayName: text("display_name").notNull(),
     bio: text("bio").notNull(),
+    avatarUrl: text("avatar_url"),
     age: integer("age"),
     gender: text("gender", { enum: ["male", "female", "unknown"] }).notNull().default("unknown"),
     systemPrompt: text("system_prompt").notNull(),

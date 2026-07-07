@@ -9,8 +9,10 @@ import type {
   ReplyBottleInput,
   ReplyBottleResponse,
   ThrowBottleInput,
-  ThrowBottleResponse
+  ThrowBottleResponse,
+  UserBottleListItem
 } from "@heart-message/shared";
+import { selectAiPersonaAvatarPath } from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { createAiBottle, generateAiReplyForConversation } from "./ai-companion";
@@ -31,12 +33,14 @@ interface BottleRow {
   expires_at: number;
   picked_at: number | null;
   created_at: number;
+  updated_at: number;
   nickname: string | null;
   avatar_url: string | null;
   age: number | null;
   gender: "male" | "female" | "unknown" | null;
   ai_display_name: string | null;
   ai_bio: string | null;
+  ai_avatar_url: string | null;
   ai_age: number | null;
   ai_gender: "male" | "female" | "unknown" | null;
 }
@@ -51,11 +55,22 @@ interface PickupRow {
   conversation_id: string | null;
 }
 
+interface UserBottleListRow extends BottleRow {
+  relation: "picked" | "thrown";
+  pickup_id: string | null;
+  conversation_id: string | null;
+  relation_at: number | null;
+  item_updated_at: number;
+}
+
 function buildAuthor(row: BottleRow): BottleAuthor {
   if (row.source === "ai" && row.ai_persona_id) {
     return {
       id: row.ai_persona_id,
       nickname: row.ai_display_name || "潮汐来信",
+      avatarUrl:
+        row.ai_avatar_url ||
+        selectAiPersonaAvatarPath(row.ai_persona_id, row.ai_gender || "unknown"),
       bio: row.ai_bio || undefined,
       age: row.ai_age || undefined,
       gender: row.ai_gender || "unknown"
@@ -93,6 +108,25 @@ function mapBottle(row: BottleRow, pickupId?: string): BottleView {
   };
 }
 
+function createPreview(content: string) {
+  return content.length > 42 ? `${content.slice(0, 42)}...` : content;
+}
+
+function mapUserBottleListItem(row: UserBottleListRow): UserBottleListItem {
+  return {
+    id: row.id,
+    relation: row.relation,
+    conversationId: row.conversation_id || undefined,
+    contentPreview: createPreview(row.content),
+    source: row.source,
+    status: row.status,
+    author: buildAuthor(row),
+    pickedAt: toIso(row.relation === "picked" ? row.relation_at : row.picked_at),
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.item_updated_at).toISOString()
+  };
+}
+
 async function findBottleWithAuthor(env: Env, bottleId: string) {
   return env.DB.prepare(
     `SELECT
@@ -120,6 +154,7 @@ async function findPickCandidate(env: Env, userId: string, now: number) {
        user_profiles.gender,
        ai_personas.display_name AS ai_display_name,
        ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
        ai_personas.age AS ai_age,
        ai_personas.gender AS ai_gender
      FROM bottles
@@ -259,6 +294,7 @@ export async function getBottleForUser(env: Env, userId: string, bottleId: strin
        user_profiles.gender,
        ai_personas.display_name AS ai_display_name,
        ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
        ai_personas.age AS ai_age,
        ai_personas.gender AS ai_gender,
        bottle_pickups.id AS pickup_id,
@@ -281,6 +317,79 @@ export async function getBottleForUser(env: Env, userId: string, bottleId: strin
   }
 
   return mapBottle(row, row.pickup_id || undefined);
+}
+
+export async function listUserBottles(env: Env, userId: string): Promise<UserBottleListItem[]> {
+  const pickedResult = await env.DB.prepare(
+    `SELECT
+       bottles.*,
+       'picked' AS relation,
+       user_profiles.nickname,
+       user_profiles.avatar_url,
+       user_profiles.age,
+       user_profiles.gender,
+       ai_personas.display_name AS ai_display_name,
+       ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
+       ai_personas.age AS ai_age,
+       ai_personas.gender AS ai_gender,
+       bottle_pickups.id AS pickup_id,
+       bottle_pickups.picked_at AS relation_at,
+       conversations.id AS conversation_id,
+       COALESCE(conversations.updated_at, bottle_pickups.picked_at, bottles.updated_at, bottles.created_at) AS item_updated_at
+     FROM bottle_pickups
+     JOIN bottles ON bottles.id = bottle_pickups.bottle_id
+     LEFT JOIN user_profiles ON user_profiles.user_id = bottles.author_id
+     LEFT JOIN ai_personas ON ai_personas.id = bottles.ai_persona_id
+     LEFT JOIN conversations
+       ON conversations.pickup_id = bottle_pickups.id
+      AND conversations.status = 'active'
+      AND conversations.deleted_by_participant_b_at IS NULL
+     WHERE bottle_pickups.picker_id = ?
+       AND bottle_pickups.status = 'active'
+       AND bottles.status <> 'deleted'
+     ORDER BY item_updated_at DESC
+     LIMIT 100`
+  )
+    .bind(userId)
+    .all<UserBottleListRow>();
+
+  const thrownResult = await env.DB.prepare(
+    `SELECT
+       bottles.*,
+       'thrown' AS relation,
+       user_profiles.nickname,
+       user_profiles.avatar_url,
+       user_profiles.age,
+       user_profiles.gender,
+       ai_personas.display_name AS ai_display_name,
+       ai_personas.bio AS ai_bio,
+       ai_personas.avatar_url AS ai_avatar_url,
+       ai_personas.age AS ai_age,
+       ai_personas.gender AS ai_gender,
+       NULL AS pickup_id,
+       NULL AS relation_at,
+       conversations.id AS conversation_id,
+       COALESCE(conversations.updated_at, bottles.updated_at, bottles.created_at) AS item_updated_at
+     FROM bottles
+     LEFT JOIN user_profiles ON user_profiles.user_id = bottles.author_id
+     LEFT JOIN ai_personas ON ai_personas.id = bottles.ai_persona_id
+     LEFT JOIN conversations
+       ON conversations.bottle_id = bottles.id
+      AND conversations.status = 'active'
+      AND conversations.deleted_by_participant_a_at IS NULL
+     WHERE bottles.author_id = ?
+       AND bottles.status <> 'deleted'
+     ORDER BY item_updated_at DESC
+     LIMIT 100`
+  )
+    .bind(userId)
+    .all<UserBottleListRow>();
+
+  return [...pickedResult.results, ...thrownResult.results]
+    .sort((left, right) => right.item_updated_at - left.item_updated_at)
+    .slice(0, 100)
+    .map(mapUserBottleListItem);
 }
 
 export async function replyToBottle(

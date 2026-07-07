@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./avatar-presets";
+
 export const DAILY_PICK_LIMIT = 20;
 export const DAILY_THROW_LIMIT = 3;
 
@@ -62,10 +64,16 @@ export const AiPurposeBindingsSchema = z.object({
 });
 export type AiPurposeBindings = z.infer<typeof AiPurposeBindingsSchema>;
 
+export const AvatarUrlSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine((value) => /^https?:\/\//.test(value) || value.startsWith("/static/"), "头像地址必须是 URL 或静态资源路径");
+
 export const UserProfileSchema = z.object({
   id: z.string(),
   nickname: z.string().min(1).max(24),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   bio: z.string().max(160).optional(),
   age: z.number().int().min(13).max(120).optional(),
   gender: GenderSchema.default("unknown")
@@ -88,7 +96,7 @@ export const AuthIdentityProfileSchema = z.object({
   provider: AuthProviderSchema,
   email: z.string().email().optional(),
   displayName: z.string().max(120).optional(),
-  avatarUrl: z.string().url().optional()
+  avatarUrl: AvatarUrlSchema.optional()
 });
 export type AuthIdentityProfile = z.infer<typeof AuthIdentityProfileSchema>;
 
@@ -146,7 +154,7 @@ export type CurrentUser = z.infer<typeof CurrentUserSchema>;
 
 export const ProfileUpsertSchema = z.object({
   nickname: z.string().min(1).max(24),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   bio: z.string().max(160).optional(),
   age: z.number().int().min(13).max(120).optional(),
   gender: GenderSchema.default("unknown")
@@ -186,7 +194,7 @@ export type BottleQuota = z.infer<typeof BottleQuotaSchema>;
 export const BottleAuthorSchema = z.object({
   id: z.string().optional(),
   nickname: z.string(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   bio: z.string().max(160).optional(),
   age: z.number().int().optional(),
   gender: GenderSchema
@@ -206,6 +214,23 @@ export const BottleViewSchema = z.object({
   createdAt: z.string()
 });
 export type BottleView = z.infer<typeof BottleViewSchema>;
+
+export const UserBottleRelationSchema = z.enum(["picked", "thrown"]);
+export type UserBottleRelation = z.infer<typeof UserBottleRelationSchema>;
+
+export const UserBottleListItemSchema = z.object({
+  id: z.string(),
+  relation: UserBottleRelationSchema,
+  conversationId: z.string().optional(),
+  contentPreview: z.string(),
+  source: z.enum(["human", "ai"]),
+  status: BottleStatusSchema,
+  author: BottleAuthorSchema,
+  pickedAt: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+export type UserBottleListItem = z.infer<typeof UserBottleListItemSchema>;
 
 export const ThrowBottleResponseSchema = z.object({
   bottle: BottleViewSchema,
@@ -348,11 +373,11 @@ export const AdminUserListItemSchema = z.object({
   role: z.enum(["user", "admin"]),
   status: UserStatusSchema,
   nickname: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   email: z.string().email().optional(),
   authProvider: AuthProviderSchema.optional(),
   authDisplayName: z.string().max(120).optional(),
-  authAvatarUrl: z.string().url().optional(),
+  authAvatarUrl: AvatarUrlSchema.optional(),
   profileCompleted: z.boolean(),
   createdAt: z.string()
 });
@@ -361,7 +386,7 @@ export type AdminUserListItem = z.infer<typeof AdminUserListItemSchema>;
 export const AdminUserProfileInsightItemSchema = z.object({
   userId: z.string(),
   nickname: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   status: UserProfileEvaluationStatusSchema.optional(),
   summary: z.string().optional(),
   interestTags: z.array(z.string()),
@@ -597,7 +622,7 @@ export const AdminContentModerationItemSchema = z.object({
   id: z.string(),
   userId: z.string(),
   nickname: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: AvatarUrlSchema.optional(),
   source: ContentModerationSourceSchema,
   targetId: z.string().optional(),
   categories: z.array(ContentModerationCategorySchema),

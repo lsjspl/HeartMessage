@@ -1,10 +1,13 @@
 <template>
   <view class="screen chat-screen">
     <view class="chat-head card">
-      <view class="avatar">{{ peerName.slice(0, 1) }}</view>
+      <view class="avatar">
+        <image v-if="peerAvatar" class="avatar-image" :src="peerAvatar" mode="aspectFill" />
+        <text v-else>{{ peerName.slice(0, 1) }}</text>
+      </view>
       <view>
         <text class="message-name">{{ peerName }}</text>
-        <text class="message-preview">由瓶子开启</text>
+        <text class="message-preview">{{ peerBio }}</text>
       </view>
       <button class="danger-button delete-button" @click="removeChat">删</button>
     </view>
@@ -13,10 +16,16 @@
       <view
         v-for="message in messages"
         :key="message.id"
-        class="bubble"
+        class="message-row"
         :class="message.isMine ? 'right' : 'left'"
       >
-        {{ message.content }}
+        <view v-if="!message.isMine" class="message-avatar">
+          <image v-if="peerAvatar" class="avatar-image" :src="peerAvatar" mode="aspectFill" />
+          <text v-else>{{ peerName.slice(0, 1) }}</text>
+        </view>
+        <view class="bubble" :class="message.isMine ? 'right' : 'left'">
+          {{ message.content }}
+        </view>
       </view>
       <view v-if="!messages.length" class="empty-text">还没有消息。</view>
     </view>
@@ -41,6 +50,8 @@ const content = ref("");
 const isSending = ref(false);
 
 const peerName = computed(() => conversation.value?.peer.nickname || "漂流瓶用户");
+const peerAvatar = computed(() => conversation.value?.peer.avatarUrl || "");
+const peerBio = computed(() => conversation.value?.peer.bio || "由瓶子开启");
 
 onLoad(async (query) => {
   conversationId.value = typeof query?.id === "string" ? query.id : "";
@@ -129,10 +140,17 @@ async function removeChat() {
   justify-content: center;
   width: 72rpx;
   height: 72rpx;
+  overflow: hidden;
   color: #ffffff;
   background: #0f8f8c;
   border-radius: 999rpx;
   font-weight: 900;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .message-name,
@@ -149,6 +167,11 @@ async function removeChat() {
   margin-top: 6rpx;
   color: #65758b;
   font-size: 22rpx;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .chat-stream {
@@ -162,6 +185,31 @@ async function removeChat() {
   color: #65758b;
   font-size: 26rpx;
   text-align: center;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12rpx;
+}
+
+.message-row.right {
+  justify-content: flex-end;
+}
+
+.message-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 56rpx;
+  height: 56rpx;
+  overflow: hidden;
+  color: #ffffff;
+  background: #0f8f8c;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 900;
 }
 
 .bubble {

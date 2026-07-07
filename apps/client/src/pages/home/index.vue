@@ -12,6 +12,9 @@
           </view>
         </view>
         <view class="top-actions">
+          <button class="bottle-count-button" hover-class="none" @click="openBottleDock()">
+            瓶子 {{ bottleCount }} 封
+          </button>
           <text class="quota-chip">可捡 {{ session.quotas.pickRemaining }} 封</text>
           <button class="throw-top-button" hover-class="none" @click="throwBottle">投信</button>
         </view>
@@ -42,18 +45,29 @@
         </view>
       </view>
     </view>
+
+    <BottleDock
+      :visible="dockVisible"
+      :selected-bottle-id="dockSelectedBottleId"
+      @close="closeBottleDock"
+      @count-change="updateBottleCount"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
+import BottleDock from "./components/BottleDock.vue";
 import OceanScene from "./components/OceanScene.vue";
-import { fetchBottleQuota, pickBottle as requestPickBottle } from "../../services/bottles";
+import { fetchBottleQuota, fetchMyBottles, pickBottle as requestPickBottle } from "../../services/bottles";
 import { useSessionStore } from "../../stores/session";
 
 const session = useSessionStore();
 const pickPhase = ref<"idle" | "searching">("idle");
+const bottleCount = ref(0);
+const dockVisible = ref(false);
+const dockSelectedBottleId = ref("");
 
 const displayName = computed(() => session.profile?.nickname || "海面旅人");
 const pickDisabled = computed(() => pickPhase.value === "searching" || session.quotas.pickRemaining <= 0);
@@ -95,6 +109,7 @@ onShow(async () => {
   }
 
   await refreshQuota();
+  await refreshBottleCount();
 });
 
 async function loadCurrentUser() {
@@ -111,6 +126,15 @@ async function refreshQuota() {
     session.applyQuota(quota);
   } catch (error) {
     showToast(getErrorMessage(error, "无法刷新今日额度"));
+  }
+}
+
+async function refreshBottleCount() {
+  try {
+    const bottles = await fetchMyBottles();
+    bottleCount.value = bottles.length;
+  } catch (error) {
+    showToast(getErrorMessage(error, "无法刷新瓶子数量"));
   }
 }
 
@@ -132,15 +156,26 @@ async function pickBottle() {
     const result = await requestPickBottle();
     await animation;
     session.applyQuota(result.quota);
-    uni.navigateTo({
-      url: `/pages/bottles/detail?id=${result.bottle.id}`
-    });
+    openBottleDock(result.bottle.id);
   } catch (error) {
     await animation;
     showToast(getErrorMessage(error, "暂时没有捡到瓶子"));
   } finally {
     pickPhase.value = "idle";
   }
+}
+
+function openBottleDock(bottleId = "") {
+  dockSelectedBottleId.value = bottleId;
+  dockVisible.value = true;
+}
+
+function closeBottleDock() {
+  dockVisible.value = false;
+}
+
+function updateBottleCount(count: number) {
+  bottleCount.value = count;
 }
 
 function throwBottle() {
@@ -191,6 +226,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 .brand,
 .brand-subtitle,
+.bottle-count-button,
 .quota-chip,
 .kicker,
 .headline,
@@ -237,6 +273,21 @@ function getErrorMessage(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   gap: 12rpx;
+}
+
+.bottle-count-button {
+  height: 58rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  color: #ffffff;
+  background: rgba(239, 118, 83, 0.88);
+  border: 1rpx solid rgba(255, 255, 255, 0.42);
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 58rpx;
+  box-shadow: 0 14rpx 30rpx rgba(239, 118, 83, 0.18);
 }
 
 .quota-chip {
@@ -447,6 +498,13 @@ function getErrorMessage(error: unknown, fallback: string) {
     min-width: 92px;
     padding: 7px 12px;
     font-size: 13px;
+  }
+
+  .bottle-count-button {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 13px;
+    line-height: 34px;
   }
 
   .throw-top-button {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ChatMessage } from "@heart-message/shared";
+import { selectAiPersonaAvatarPath, type ChatMessage } from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { generateAiText } from "./ai-runtime";
@@ -48,6 +48,7 @@ function personaSystemPrompt() {
     "你是漂流瓶社交产品的人格生成器。",
     "请生成一个适合中文陪伴聊天的虚拟人格。",
     "如果提供了用户画像，必须优先贴合用户偏好的话题、沟通风格和人格特征。",
+    "资料必须像真实中文社交用户，昵称、简介、年龄和性别要自然一致，不要出现 AI、机器人、虚拟助手等字样。",
     "不得迎合广告、色情、联系方式交换或其他平台不允许的需求。",
     "只返回 JSON，不要 Markdown，不要代码块，不要额外解释。",
     "JSON 字段：displayName、bio、age、gender、systemPrompt。",
@@ -151,17 +152,22 @@ export async function createAiBottle(env: Env, targetUserId?: string) {
     const now = nowDate.getTime();
     const personaId = crypto.randomUUID();
     const bottleId = crypto.randomUUID();
+    const personaAvatarUrl = selectAiPersonaAvatarPath(
+      `${personaId}:${personaGeneration.persona.displayName}`,
+      personaGeneration.persona.gender
+    );
 
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO ai_personas
-           (id, target_user_id, display_name, bio, age, gender, system_prompt, model_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, target_user_id, display_name, bio, avatar_url, age, gender, system_prompt, model_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         personaId,
         targetUserId ?? null,
         personaGeneration.persona.displayName,
         personaGeneration.persona.bio,
+        personaAvatarUrl,
         personaGeneration.persona.age ?? null,
         personaGeneration.persona.gender,
         personaGeneration.persona.systemPrompt,

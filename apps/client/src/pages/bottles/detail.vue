@@ -16,10 +16,14 @@
 
     <view v-else class="card letter-card">
       <view class="author-row">
-        <view class="avatar">{{ bottle.author.nickname.slice(0, 1) }}</view>
+        <view class="avatar">
+          <image v-if="bottle.author.avatarUrl" class="avatar-image" :src="bottle.author.avatarUrl" mode="aspectFill" />
+          <text v-else>{{ bottle.author.nickname.slice(0, 1) }}</text>
+        </view>
         <view>
           <text class="author-name">{{ bottle.author.nickname }}</text>
           <text class="author-meta">{{ authorMeta }}</text>
+          <text v-if="bottle.author.bio" class="author-bio">{{ bottle.author.bio }}</text>
         </view>
       </view>
       <text class="letter-text">{{ bottle.content }}</text>
@@ -206,14 +210,22 @@ function goThrow() {
   justify-content: center;
   width: 72rpx;
   height: 72rpx;
+  overflow: hidden;
   color: #ffffff;
   background: #0f8f8c;
   border-radius: 999rpx;
   font-weight: 900;
 }
 
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .author-name,
 .author-meta,
+.author-bio,
 .letter-text {
   display: block;
 }
@@ -227,6 +239,14 @@ function goThrow() {
   margin-top: 6rpx;
   color: #65758b;
   font-size: 22rpx;
+}
+
+.author-bio {
+  max-width: 520rpx;
+  margin-top: 8rpx;
+  color: #506176;
+  font-size: 23rpx;
+  line-height: 1.45;
 }
 
 .letter-text {

@@ -11,7 +11,10 @@
 
     <view class="message-list">
       <view v-for="item in conversations" :key="item.id" class="card message-item" @click="openChat(item.id)">
-        <view class="avatar">{{ item.peer.nickname.slice(0, 1) }}</view>
+        <view class="avatar">
+          <image v-if="item.peer.avatarUrl" class="avatar-image" :src="item.peer.avatarUrl" mode="aspectFill" />
+          <text v-else>{{ item.peer.nickname.slice(0, 1) }}</text>
+        </view>
         <view class="message-main">
           <text class="message-name">{{ item.peer.nickname }}</text>
           <text class="message-preview">{{ item.preview }}</text>
@@ -98,10 +101,17 @@ function openChat(id: string) {
   justify-content: center;
   width: 76rpx;
   height: 76rpx;
+  overflow: hidden;
   color: #ffffff;
   background: linear-gradient(135deg, #0f8f8c, #a18cd1);
   border-radius: 999rpx;
   font-weight: 900;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .message-main {

@@ -1,0 +1,45 @@
+## MODIFIED Requirements
+
+### Requirement: AI 补位瓶子生成
+
+系统 MUST 在没有可捞瓶子且 AI 补位开启时生成 AI 人格和 AI 瓶子，并让用户捞到该瓶子。
+
+#### Scenario: 无瓶且 AI 补位开启
+
+- **WHEN** 用户执行捞瓶且没有可用漂浮瓶
+- **THEN** 系统 MUST 使用 `persona_generation` 生成 AI 人格
+- **AND** AI 人格 MUST 包含昵称、简介、年龄、性别和头像地址
+- **AND** 使用 `bottle_generation` 生成符合该人格的瓶子内容
+- **AND** 将人格和瓶子保存到 D1
+- **AND** 继续完成本次捞瓶并扣减捞瓶额度。
+
+#### Scenario: 无瓶但 AI 补位关闭
+
+- **WHEN** 用户执行捞瓶且没有可用漂浮瓶
+- **AND** 系统参数中 AI 补位关闭
+- **THEN** 系统 MUST 返回 `NO_BOTTLE_AVAILABLE`。
+
+### Requirement: AI 陪伴聊天回复
+
+系统 MUST 在用户与 AI 瓶子开启或继续聊天时生成 AI 回复。
+
+#### Scenario: 用户回复 AI 瓶子
+
+- **WHEN** 用户回复捡到的 AI 瓶子
+- **THEN** 系统 MUST 创建或复用会话
+- **AND** 写入用户消息
+- **AND** 使用 `chat_reply` 模型生成 AI 回复
+- **AND** 写入 `sender_type = ai` 的消息。
+
+#### Scenario: 用户继续 AI 会话
+
+- **WHEN** 用户在 AI 会话中发送消息
+- **THEN** 系统 MUST 写入用户消息
+- **AND** 使用同一 AI 人格的设定生成 AI 回复
+- **AND** 返回后续查询可看到用户消息和 AI 消息。
+
+#### Scenario: AI 人格展示资料
+
+- **WHEN** 用户查看 AI 瓶子或 AI 会话
+- **THEN** API MUST 返回 AI 人格的头像、昵称、简介、年龄和性别
+- **AND** 后台和数据层 MUST 保留 `source = ai` 供审计使用。

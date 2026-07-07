@@ -4,7 +4,8 @@ import type {
   PickBottleResponse,
   ReplyBottleResponse,
   ThrowBottleInput,
-  ThrowBottleResponse
+  ThrowBottleResponse,
+  UserBottleListItem
 } from "@heart-message/shared";
 import { apiRequest } from "./api";
 
@@ -27,6 +28,10 @@ export function pickBottle() {
 
 export function fetchBottleDetail(id: string) {
   return apiRequest<BottleView>(`/v1/bottles/${id}`);
+}
+
+export function fetchMyBottles() {
+  return apiRequest<UserBottleListItem[]>("/v1/bottles/mine");
 }
 
 export function replyBottle(id: string, content: string) {

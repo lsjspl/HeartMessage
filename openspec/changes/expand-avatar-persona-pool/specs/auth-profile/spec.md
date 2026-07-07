@@ -1,0 +1,31 @@
+## MODIFIED Requirements
+
+### Requirement: 用户默认头像库
+
+用户端资料完善页 MUST 提供内置默认头像库，让用户不用上传本地图片也能选择头像并保存资料。
+
+#### Scenario: 用户选择默认头像
+
+- **WHEN** 用户在资料完善页点击任一默认头像
+- **THEN** 客户端 MUST 将该头像地址设置为当前资料头像
+- **AND** 保存资料时通过 `avatarUrl` 提交该头像地址。
+
+#### Scenario: 默认头像按类别展示
+
+- **WHEN** 用户查看资料完善页头像区域
+- **THEN** 客户端 MUST 展示共 50 个默认头像
+- **AND** 默认头像 MUST 覆盖男生、女生、中性风格和动物动漫类别
+- **AND** 当前选择的头像 MUST 有明确选中态。
+
+#### Scenario: 默认头像资产归档
+
+- **WHEN** 项目保存默认头像资产
+- **THEN** 原始 PNG MUST 保存到 `docs/img/avatars/originals`
+- **AND** 用户端引用的压缩头像 MUST 保存到 `apps/client/src/static/avatars/defaults`
+- **AND** 压缩头像单张目标大小 MUST 不超过 200KB。
+
+#### Scenario: 用户上传自定义头像
+
+- **WHEN** 用户通过上传按钮成功上传自定义头像
+- **THEN** 客户端 MUST 使用上传后的公开地址覆盖当前头像选择
+- **AND** 默认头像库仍然可继续选择。

@@ -6,6 +6,7 @@ import {
   deletePickedBottle,
   getBottleForUser,
   getBottleQuotaForUser,
+  listUserBottles,
   pickBottle,
   replyToBottle,
   throwBottle
@@ -31,6 +32,12 @@ export const bottleRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVar
     const result = await pickBottle(context.env, userId);
 
     return context.json(createOk(result));
+  })
+  .get("/mine", async (context) => {
+    const userId = context.get("userId")!;
+    const bottles = await listUserBottles(context.env, userId);
+
+    return context.json(createOk(bottles));
   })
   .get("/:id", async (context) => {
     const userId = context.get("userId")!;
