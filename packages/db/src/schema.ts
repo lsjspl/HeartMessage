@@ -302,3 +302,45 @@ export const operationLogs = sqliteTable(
     targetIdx: index("operation_logs_target_idx").on(table.targetType, table.targetId)
   })
 );
+
+export const contentModerationEvents = sqliteTable(
+  "content_moderation_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source", { enum: ["bottle_throw", "bottle_reply", "chat_message"] }).notNull(),
+    targetId: text("target_id"),
+    categories: text("categories", { mode: "json" }).$type<string[]>().notNull().default([]),
+    reason: text("reason").notNull(),
+    contentPreview: text("content_preview").notNull(),
+    contentLength: integer("content_length").notNull(),
+    modelId: text("model_id").references(() => aiModels.id, { onDelete: "set null" }),
+    decision: text("decision", { enum: ["blocked", "allowed_logged"] }).notNull().default("blocked"),
+    highestSeverity: text("highest_severity", { enum: ["low", "medium", "high"] })
+      .notNull()
+      .default("medium"),
+    findingsJson: text("findings_json", { mode: "json" }).$type<Record<string, unknown>[]>().notNull().default([]),
+    policyVersion: text("policy_version"),
+    policySnapshotJson: text("policy_snapshot_json", { mode: "json" })
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    ruleSource: text("rule_source", { enum: ["hard_rule", "ai_model", "mixed"] }).notNull().default("ai_model"),
+    status: text("status", { enum: ["pending", "confirmed", "dismissed"] }).notNull().default("pending"),
+    reviewerId: text("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+    reviewNote: text("review_note"),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
+  },
+  (table) => ({
+    createdIdx: index("content_moderation_events_created_idx").on(table.createdAt),
+    userIdx: index("content_moderation_events_user_idx").on(table.userId),
+    statusIdx: index("content_moderation_events_status_idx").on(table.status),
+    sourceIdx: index("content_moderation_events_source_idx").on(table.source),
+    decisionIdx: index("content_moderation_events_decision_idx").on(table.decision),
+    severityIdx: index("content_moderation_events_severity_idx").on(table.highestSeverity)
+  })
+);

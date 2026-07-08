@@ -90,7 +90,12 @@
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { Check, RefreshLeft } from "@element-plus/icons-vue";
-import { DAILY_PICK_LIMIT, DAILY_THROW_LIMIT, type SystemSettings } from "@heart-message/shared";
+import {
+  DAILY_PICK_LIMIT,
+  DAILY_THROW_LIMIT,
+  DEFAULT_CONTENT_SAFETY_SETTINGS,
+  type SystemSettings
+} from "@heart-message/shared";
 import { adminRequest } from "../services/api";
 
 const loading = ref(false);
@@ -112,7 +117,8 @@ const settings = reactive<SystemSettings>({
     enabled: true,
     intervalHours: 24,
     batchSize: 20
-  }
+  },
+  contentSafety: DEFAULT_CONTENT_SAFETY_SETTINGS
 });
 
 onMounted(loadSettings);

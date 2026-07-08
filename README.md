@@ -243,4 +243,8 @@ pnpm --filter @heart-message/admin exec wrangler pages deploy dist --project-nam
 1. 新功能先在 `openspec/changes/<change-id>/` 写 `proposal.md`、`design.md`、`tasks.md`。
 2. 规格变更写到 `openspec/changes/<change-id>/specs/<capability>/spec.md`。
 3. 通过评审后再实现代码。
-4. 实现完成后，把稳定规格合并到 `openspec/specs/`。
+4. 实现完成后运行 `pnpm spec:validate` 和相关代码校验，并把 `tasks.md` 全部勾选完成。
+5. 运行 `pnpm spec:status` 查看已完成但仍处于 active 的变更。
+6. 使用 `pnpm spec:archive <change-id>` 归档单个已完成变更，CLI 会把稳定规格合并到 `openspec/specs/` 并移走变更目录。
+7. 如果是纯文档、部署脚本或不需要合并规格的变更，使用 `pnpm spec:archive <change-id> --skip-specs`。
+8. 归档后再次运行 `pnpm spec:validate`，确保主规格和剩余 active 变更都通过校验。

@@ -15,6 +15,7 @@
     "openspec": "openspec",
     "spec:status": "node scripts/openspec-status.mjs",
     "spec:validate": "openspec validate --all --strict --no-interactive",
+    "spec:archive": "openspec archive",
     "spec:update": "openspec update"
   },
   "devDependencies": {

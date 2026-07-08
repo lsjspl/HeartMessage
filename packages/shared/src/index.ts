@@ -40,7 +40,13 @@ export const AiModelPurposeSchema = z.enum([
 ]);
 export type AiModelPurpose = z.infer<typeof AiModelPurposeSchema>;
 
-export const ContentModerationCategorySchema = z.enum(["advertisement", "sexual", "contact_info"]);
+export const ContentModerationCategorySchema = z.enum([
+  "advertisement",
+  "sexual",
+  "contact_info",
+  "abuse",
+  "illegal"
+]);
 export type ContentModerationCategory = z.infer<typeof ContentModerationCategorySchema>;
 
 export const ContentModerationSourceSchema = z.enum(["bottle_throw", "bottle_reply", "chat_message"]);
@@ -48,6 +54,150 @@ export type ContentModerationSource = z.infer<typeof ContentModerationSourceSche
 
 export const ContentModerationEventStatusSchema = z.enum(["pending", "confirmed", "dismissed"]);
 export type ContentModerationEventStatus = z.infer<typeof ContentModerationEventStatusSchema>;
+
+export const ContentModerationSeveritySchema = z.enum(["low", "medium", "high"]);
+export type ContentModerationSeverity = z.infer<typeof ContentModerationSeveritySchema>;
+
+export const ContentModerationDecisionSchema = z.enum(["blocked", "allowed_logged"]);
+export type ContentModerationDecision = z.infer<typeof ContentModerationDecisionSchema>;
+
+export const ContentModerationRuleSourceSchema = z.enum(["hard_rule", "ai_model", "mixed"]);
+export type ContentModerationRuleSource = z.infer<typeof ContentModerationRuleSourceSchema>;
+
+export const ContentModerationFindingSchema = z.object({
+  category: ContentModerationCategorySchema,
+  severity: ContentModerationSeveritySchema,
+  confidence: z.number().min(0).max(1).optional(),
+  reason: z.string().trim().max(120).optional()
+});
+export type ContentModerationFinding = z.infer<typeof ContentModerationFindingSchema>;
+
+export const ContentSafetyCategoryPolicySchema = z.object({
+  enabled: z.boolean(),
+  blockAt: ContentModerationSeveritySchema,
+  hardRuleEnabled: z.boolean().optional()
+});
+export type ContentSafetyCategoryPolicy = z.infer<typeof ContentSafetyCategoryPolicySchema>;
+
+export const ContentSafetyCategoryPolicyOverrideSchema = z.object({
+  enabled: z.boolean().optional(),
+  blockAt: ContentModerationSeveritySchema.optional(),
+  hardRuleEnabled: z.boolean().optional()
+});
+export type ContentSafetyCategoryPolicyOverride = z.infer<
+  typeof ContentSafetyCategoryPolicyOverrideSchema
+>;
+
+const EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES = {
+  contact_info: {},
+  advertisement: {},
+  sexual: {},
+  abuse: {},
+  illegal: {}
+};
+
+export const ContentSafetyCategoryPoliciesSchema = z.object({
+  contact_info: ContentSafetyCategoryPolicySchema,
+  advertisement: ContentSafetyCategoryPolicySchema,
+  sexual: ContentSafetyCategoryPolicySchema,
+  abuse: ContentSafetyCategoryPolicySchema,
+  illegal: ContentSafetyCategoryPolicySchema
+});
+export type ContentSafetyCategoryPolicies = z.infer<typeof ContentSafetyCategoryPoliciesSchema>;
+
+export const ContentSafetyCategoryPolicyOverridesSchema = z
+  .object({
+    contact_info: ContentSafetyCategoryPolicyOverrideSchema.default({}),
+    advertisement: ContentSafetyCategoryPolicyOverrideSchema.default({}),
+    sexual: ContentSafetyCategoryPolicyOverrideSchema.default({}),
+    abuse: ContentSafetyCategoryPolicyOverrideSchema.default({}),
+    illegal: ContentSafetyCategoryPolicyOverrideSchema.default({})
+  })
+  .default(EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES);
+export type ContentSafetyCategoryPolicyOverrides = z.infer<
+  typeof ContentSafetyCategoryPolicyOverridesSchema
+>;
+
+const EMPTY_CONTENT_SAFETY_SOURCE_OVERRIDES = {
+  bottle_throw: EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES,
+  bottle_reply: EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES,
+  chat_message: EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES
+};
+
+export const ContentSafetySourceOverridesSchema = z
+  .object({
+    bottle_throw: ContentSafetyCategoryPolicyOverridesSchema.default(
+      EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES
+    ),
+    bottle_reply: ContentSafetyCategoryPolicyOverridesSchema.default(
+      EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES
+    ),
+    chat_message: ContentSafetyCategoryPolicyOverridesSchema.default(
+      EMPTY_CONTENT_SAFETY_CATEGORY_POLICY_OVERRIDES
+    )
+  })
+  .default(EMPTY_CONTENT_SAFETY_SOURCE_OVERRIDES);
+export type ContentSafetySourceOverrides = z.infer<typeof ContentSafetySourceOverridesSchema>;
+
+export const ContentSafetySettingsSchema = z.object({
+  enabled: z.boolean(),
+  logAllowedFindings: z.boolean(),
+  updatedAt: z.number().int().optional(),
+  categories: ContentSafetyCategoryPoliciesSchema,
+  sourceOverrides: ContentSafetySourceOverridesSchema
+});
+export type ContentSafetySettings = z.infer<typeof ContentSafetySettingsSchema>;
+
+export const DEFAULT_CONTENT_SAFETY_SETTINGS: ContentSafetySettings = {
+  enabled: true,
+  logAllowedFindings: false,
+  categories: {
+    contact_info: {
+      enabled: true,
+      hardRuleEnabled: true,
+      blockAt: "low"
+    },
+    advertisement: {
+      enabled: true,
+      blockAt: "medium"
+    },
+    sexual: {
+      enabled: true,
+      blockAt: "medium"
+    },
+    abuse: {
+      enabled: true,
+      blockAt: "high"
+    },
+    illegal: {
+      enabled: true,
+      blockAt: "medium"
+    }
+  },
+  sourceOverrides: {
+    bottle_throw: {
+      contact_info: {},
+      advertisement: {},
+      sexual: {},
+      abuse: {},
+      illegal: {}
+    },
+    bottle_reply: {
+      contact_info: {},
+      advertisement: {},
+      sexual: { blockAt: "high" },
+      abuse: {},
+      illegal: {}
+    },
+    chat_message: {
+      contact_info: {},
+      advertisement: {},
+      sexual: { blockAt: "high" },
+      abuse: { blockAt: "high" },
+      illegal: {}
+    }
+  }
+};
 
 export const UserProfileEvaluationStatusSchema = z.enum(["pending", "completed", "failed"]);
 export type UserProfileEvaluationStatus = z.infer<typeof UserProfileEvaluationStatusSchema>;
@@ -337,6 +487,8 @@ export const AdminContentModerationListQuerySchema = AdminPaginationQuerySchema.
   keyword: z.string().trim().max(80).optional(),
   source: ContentModerationSourceSchema.optional(),
   category: ContentModerationCategorySchema.optional(),
+  severity: ContentModerationSeveritySchema.optional(),
+  decision: ContentModerationDecisionSchema.optional(),
   status: ContentModerationEventStatusSchema.optional()
 });
 export type AdminContentModerationListQuery = z.infer<typeof AdminContentModerationListQuerySchema>;
@@ -533,7 +685,8 @@ export const SystemSettingsSchema = z.object({
   aiTrigger: z.enum(["empty_pool", "low_pool"]),
   aiBatchSize: z.number().int().min(1).max(200),
   aiBindings: AiPurposeBindingsSchema,
-  userProfileEvaluation: UserProfileEvaluationSettingsSchema
+  userProfileEvaluation: UserProfileEvaluationSettingsSchema,
+  contentSafety: ContentSafetySettingsSchema
 });
 export type SystemSettings = z.infer<typeof SystemSettingsSchema>;
 
@@ -630,6 +783,12 @@ export const AdminContentModerationItemSchema = z.object({
   contentPreview: z.string(),
   contentLength: z.number().int(),
   modelId: z.string().optional(),
+  decision: ContentModerationDecisionSchema,
+  highestSeverity: ContentModerationSeveritySchema,
+  findings: z.array(ContentModerationFindingSchema),
+  policyVersion: z.string().optional(),
+  policySnapshot: z.record(z.string(), z.unknown()),
+  ruleSource: ContentModerationRuleSourceSchema,
   status: ContentModerationEventStatusSchema,
   reviewerId: z.string().optional(),
   reviewNote: z.string().optional(),

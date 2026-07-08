@@ -1,14 +1,21 @@
 import { z } from "zod";
 import {
-  ContentModerationCategorySchema,
+  ContentModerationFindingSchema,
   ContentModerationSourceSchema,
   type ContentModerationCategory,
-  type ContentModerationSource
+  type ContentModerationDecision,
+  type ContentModerationFinding,
+  type ContentModerationRuleSource,
+  type ContentModerationSeverity,
+  type ContentModerationSource,
+  type ContentSafetyCategoryPolicy,
+  type ContentSafetySettings
 } from "@heart-message/shared";
 import { AppError } from "../errors";
 import type { Env } from "../env";
 import { generateAiText } from "./ai-runtime";
 import { writeOperationLog } from "./logs";
+import { getSystemSettings } from "./settings";
 
 export type UserContentSource = ContentModerationSource;
 
@@ -19,10 +26,30 @@ interface ModerationContext {
 }
 
 const AiModerationOutputSchema = z.object({
-  allowed: z.boolean(),
-  categories: z.array(ContentModerationCategorySchema).default([]),
-  reason: z.string().min(1).max(120).optional()
+  findings: z.array(ContentModerationFindingSchema).default([])
 });
+
+const moderationCategories: ContentModerationCategory[] = [
+  "contact_info",
+  "advertisement",
+  "sexual",
+  "abuse",
+  "illegal"
+];
+
+const severityRank: Record<ContentModerationSeverity, number> = {
+  low: 1,
+  medium: 2,
+  high: 3
+};
+
+const categoryMessages: Record<ContentModerationCategory, string> = {
+  contact_info: "内容包含联系方式，不能发送",
+  advertisement: "内容包含广告营销信息，不能发送",
+  sexual: "内容包含色情低俗内容，不能发送",
+  abuse: "内容包含骚扰辱骂内容，不能发送",
+  illegal: "内容包含违法或诈骗风险，不能发送"
+};
 
 const phonePattern = /(?:\+?86[-\s]?)?1[3-9]\d[-\s]?\d{4}[-\s]?\d{4}/;
 const wechatPattern =
@@ -37,25 +64,71 @@ function parseAiJson(content: string) {
   }
 }
 
-function detectContactInfo(content: string): ContentModerationCategory[] {
-  const categories = new Set<ContentModerationCategory>();
-
-  if (phonePattern.test(content) || wechatPattern.test(content) || qqPattern.test(content)) {
-    categories.add("contact_info");
-  }
-
-  return [...categories];
+function getEffectivePolicy(
+  settings: ContentSafetySettings,
+  source: ContentModerationSource,
+  category: ContentModerationCategory
+): ContentSafetyCategoryPolicy {
+  return {
+    ...settings.categories[category],
+    ...(settings.sourceOverrides[source]?.[category] ?? {})
+  };
 }
 
-function moderationSystemPrompt() {
+function reachesBlockThreshold(
+  settings: ContentSafetySettings,
+  source: ContentModerationSource,
+  finding: ContentModerationFinding
+) {
+  const policy = getEffectivePolicy(settings, source, finding.category);
+
+  return policy.enabled && severityRank[finding.severity] >= severityRank[policy.blockAt];
+}
+
+function enabledAiCategories(settings: ContentSafetySettings, source: ContentModerationSource) {
+  return moderationCategories.filter((category) => getEffectivePolicy(settings, source, category).enabled);
+}
+
+function detectContactInfo(
+  content: string,
+  settings: ContentSafetySettings,
+  source: ContentModerationSource
+): ContentModerationFinding[] {
+  const policy = getEffectivePolicy(settings, source, "contact_info");
+
+  if (!policy.enabled || policy.hardRuleEnabled === false) {
+    return [];
+  }
+
+  if (phonePattern.test(content) || wechatPattern.test(content) || qqPattern.test(content)) {
+    return [
+      {
+        category: "contact_info",
+        severity: "high",
+        confidence: 1,
+        reason: "命中联系方式硬规则"
+      }
+    ];
+  }
+
+  return [];
+}
+
+function moderationSystemPrompt(categories: ContentModerationCategory[]) {
   return [
     "你是漂流瓶社交产品的内容安全审核模型。",
-    "请判断用户发言是否可以发送。",
-    "必须拦截广告营销、色情低俗、性邀约、联系方式或引流内容。",
-    "联系方式包括手机号、微信、WeChat、VX、WX、QQ、扣扣等。",
+    "请识别用户发言中的内容安全风险，不要直接决定是否允许发送。",
+    "风险程度只能是 low、medium、high。",
+    "low 表示轻微或语义不明确，medium 表示明确风险，high 表示明显违规或高风险。",
+    `只评估这些分类：${categories.join("、")}。`,
+    "contact_info 表示手机号、微信、WeChat、VX、WX、QQ、扣扣或站外导流。",
+    "advertisement 表示广告营销、推广、刷屏或商业引流。",
+    "sexual 表示色情低俗、露骨性暗示、性邀约或色情交易。",
+    "abuse 表示辱骂、骚扰、歧视或威胁。",
+    "illegal 表示诈骗、违法交易或灰产引导。",
     "只返回 JSON，不要 Markdown，不要代码块，不要额外解释。",
-    "JSON 字段：allowed、categories、reason。",
-    "categories 只能包含 advertisement、sexual、contact_info。"
+    "JSON 字段：findings。",
+    "findings 数组元素字段：category、severity、confidence、reason。"
   ].join("\n");
 }
 
@@ -67,23 +140,71 @@ function createContentPreview(content: string) {
     .slice(0, 120);
 }
 
-async function blockContent(
+function highestSeverity(findings: ContentModerationFinding[]): ContentModerationSeverity {
+  return findings.reduce<ContentModerationSeverity>((highest, finding) => {
+    return severityRank[finding.severity] > severityRank[highest] ? finding.severity : highest;
+  }, "low");
+}
+
+function ruleSourceFromFindings(
+  hardRuleFindings: ContentModerationFinding[],
+  aiFindings: ContentModerationFinding[]
+): ContentModerationRuleSource {
+  if (hardRuleFindings.length > 0 && aiFindings.length > 0) {
+    return "mixed";
+  }
+
+  return hardRuleFindings.length > 0 ? "hard_rule" : "ai_model";
+}
+
+function createPolicySnapshot(
+  settings: ContentSafetySettings,
+  source: ContentModerationSource,
+  findings: ContentModerationFinding[]
+) {
+  const categories = [...new Set(findings.map((finding) => finding.category))];
+
+  return {
+    enabled: settings.enabled,
+    source,
+    categories: Object.fromEntries(
+      categories.map((category) => [category, getEffectivePolicy(settings, source, category)])
+    )
+  };
+}
+
+function mainBlockReason(findings: ContentModerationFinding[]) {
+  const [finding] = [...findings].sort((left, right) => {
+    return severityRank[right.severity] - severityRank[left.severity];
+  });
+
+  return finding?.reason || categoryMessages[finding?.category ?? "advertisement"];
+}
+
+async function recordModerationEvent(
   env: Env,
   context: ModerationContext,
-  categories: ContentModerationCategory[],
-  reason: string,
   content: string,
+  settings: ContentSafetySettings,
+  findings: ContentModerationFinding[],
+  decision: ContentModerationDecision,
+  ruleSource: ContentModerationRuleSource,
+  reason: string,
   modelId?: string
-): Promise<never> {
+) {
   const now = Date.now();
   const eventId = crypto.randomUUID();
   const source = ContentModerationSourceSchema.parse(context.source);
+  const categories = [...new Set(findings.map((finding) => finding.category))];
+  const severity = highestSeverity(findings);
+  const status = decision === "blocked" ? "pending" : "dismissed";
 
   await env.DB.prepare(
     `INSERT INTO content_moderation_events
        (id, user_id, source, target_id, categories, reason, content_preview, content_length,
-        model_id, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+        model_id, decision, highest_severity, findings_json, policy_version, policy_snapshot_json,
+        rule_source, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       eventId,
@@ -95,6 +216,13 @@ async function blockContent(
       createContentPreview(content),
       content.length,
       modelId ?? null,
+      decision,
+      severity,
+      JSON.stringify(findings),
+      settings.updatedAt ? String(settings.updatedAt) : "default",
+      JSON.stringify(createPolicySnapshot(settings, source, findings)),
+      ruleSource,
+      status,
       now,
       now
     )
@@ -102,17 +230,37 @@ async function blockContent(
 
   await writeOperationLog(env, {
     actorId: context.userId,
-    action: "content.moderation.block",
+    action: decision === "blocked" ? "content.moderation.block" : "content.moderation.allow_log",
     targetType: context.source,
     targetId: eventId,
     metadata: {
       categories,
+      decision,
+      highestSeverity: severity,
       modelId,
+      ruleSource,
       source,
       sourceTargetId: context.targetId,
       contentLength: content.length
     }
   });
+}
+
+async function blockContent(
+  env: Env,
+  context: ModerationContext,
+  content: string,
+  settings: ContentSafetySettings,
+  findings: ContentModerationFinding[],
+  ruleSource: ContentModerationRuleSource,
+  modelId?: string
+): Promise<never> {
+  const blockedFindings = findings.filter((finding) => {
+    return reachesBlockThreshold(settings, context.source, finding);
+  });
+  const reason = mainBlockReason(blockedFindings);
+
+  await recordModerationEvent(env, context, content, settings, blockedFindings, "blocked", ruleSource, reason, modelId);
 
   throw new AppError(422, "CONTENT_BLOCKED", reason);
 }
@@ -124,50 +272,86 @@ export async function moderateUserContent(env: Env, content: string, context: Mo
     throw new AppError(400, "CONTENT_EMPTY", "内容不能为空");
   }
 
-  const hardBlockCategories = detectContactInfo(normalized);
+  const settings = (await getSystemSettings(env)).contentSafety;
 
-  if (hardBlockCategories.length > 0) {
-    await blockContent(env, context, hardBlockCategories, "内容包含联系方式，不能发送", normalized);
+  if (!settings.enabled) {
+    return;
   }
 
-  let generation;
+  const hardRuleFindings = detectContactInfo(normalized, settings, context.source);
+  const blockedHardFindings = hardRuleFindings.filter((finding) => {
+    return reachesBlockThreshold(settings, context.source, finding);
+  });
 
-  try {
-    generation = await generateAiText(
-      env,
-      "content_moderation",
-      [
-        { role: "system", content: moderationSystemPrompt() },
-        {
-          role: "user",
-          content: JSON.stringify({
-            source: context.source,
-            content: normalized
-          })
-        }
-      ],
-      { temperature: 0, maxTokens: 220 }
-    );
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
+  if (blockedHardFindings.length > 0) {
+    await blockContent(env, context, normalized, settings, blockedHardFindings, "hard_rule");
+  }
+
+  const categories = enabledAiCategories(settings, context.source);
+  let aiFindings: ContentModerationFinding[] = [];
+  let modelId: string | undefined;
+
+  if (categories.length > 0) {
+    let generation;
+
+    try {
+      generation = await generateAiText(
+        env,
+        "content_moderation",
+        [
+          { role: "system", content: moderationSystemPrompt(categories) },
+          {
+            role: "user",
+            content: JSON.stringify({
+              source: context.source,
+              content: normalized
+            })
+          }
+        ],
+        { temperature: 0, maxTokens: 360 }
+      );
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError(502, "AI_MODERATION_FAILED", "内容审核失败，请稍后再试");
     }
 
-    throw new AppError(502, "AI_MODERATION_FAILED", "内容审核失败，请稍后再试");
+    modelId = generation.model.id;
+    aiFindings = parseAiJson(generation.result.content).findings.filter((finding) => {
+      return getEffectivePolicy(settings, context.source, finding.category).enabled;
+    });
   }
 
-  const output = parseAiJson(generation.result.content);
+  const findings = [...hardRuleFindings, ...aiFindings];
+  const blockedFindings = findings.filter((finding) => {
+    return reachesBlockThreshold(settings, context.source, finding);
+  });
 
-  if (!output.allowed) {
-    const categories: ContentModerationCategory[] =
-      output.categories.length > 0 ? output.categories : ["advertisement"];
+  if (blockedFindings.length > 0) {
     await blockContent(
       env,
       context,
-      categories,
-      output.reason || "内容包含平台不允许发送的信息",
       normalized,
-      generation.model.id
+      settings,
+      findings,
+      ruleSourceFromFindings(hardRuleFindings, aiFindings),
+      modelId
+    );
+  }
+
+  if (settings.logAllowedFindings && findings.length > 0) {
+    await recordModerationEvent(
+      env,
+      context,
+      normalized,
+      settings,
+      findings,
+      "allowed_logged",
+      ruleSourceFromFindings(hardRuleFindings, aiFindings),
+      "未达到拦截程度，仅记录观察",
+      modelId
     );
   }
 }

@@ -8,6 +8,7 @@ import {
   AdminUserListQuerySchema,
   AdminUserProfileInsightListQuerySchema,
   AdminUserStatusUpdateSchema,
+  ContentSafetySettingsSchema,
   createOk,
   SensitiveConfigKeySchema,
   SensitiveConfigUpsertSchema,
@@ -18,7 +19,9 @@ import { requireAdmin, type AuthVariables } from "../middleware/auth";
 import { listAdminUsers, updateAdminUserStatus } from "../services/admin-users";
 import { listAdminBottles, updateAdminBottleStatus } from "../services/bottles";
 import {
+  getContentModerationSettings,
   listContentModerationEvents,
+  saveContentModerationSettings,
   updateContentModerationEventStatus
 } from "../services/content-moderation-admin";
 import { listOperationLogs, writeOperationLog } from "../services/logs";
@@ -198,6 +201,27 @@ export const adminRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVari
     const query = AdminContentModerationListQuerySchema.parse(context.req.query());
 
     return context.json(createOk(await listContentModerationEvents(context.env, query)));
+  })
+  .get("/content-moderation/settings", async (context) => {
+    return context.json(createOk(await getContentModerationSettings(context.env)));
+  })
+  .put("/content-moderation/settings", async (context) => {
+    const input = ContentSafetySettingsSchema.parse(await context.req.json());
+    const settings = await saveContentModerationSettings(context.env, input);
+
+    await writeOperationLog(context.env, {
+      actorId: context.get("userId"),
+      action: "admin.content_moderation.settings.update",
+      targetType: "content_moderation_settings",
+      metadata: {
+        enabled: settings.enabled,
+        logAllowedFindings: settings.logAllowedFindings,
+        categoryCount: Object.keys(settings.categories).length,
+        updatedAt: settings.updatedAt
+      }
+    });
+
+    return context.json(createOk(settings));
   })
   .patch("/content-moderation/:id/status", async (context) => {
     const input = AdminContentModerationStatusUpdateSchema.parse(await context.req.json());
