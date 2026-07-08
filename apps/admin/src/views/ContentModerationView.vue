@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1>内容审核</h1>
-        <p>查看 AI 和硬规则拦截的用户发言。</p>
+        <p>查看 AI 和规则拦截的用户发言。</p>
       </div>
     </div>
 
@@ -180,15 +180,6 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="硬规则" width="100">
-              <template #default="{ row }">
-                <el-switch
-                  v-if="row.value === 'contact_info'"
-                  v-model="policySettings.categories.contact_info.hardRuleEnabled"
-                />
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
             <el-table-column label="回瓶拦截" min-width="150">
               <template #default="{ row }">
                 <el-select v-model="row.replyPolicy.blockAt" clearable>
@@ -204,6 +195,24 @@
               </template>
             </el-table-column>
           </el-table>
+
+          <div class="hard-rule-section">
+            <h2>内置规则</h2>
+            <el-form class="hard-rule-form" label-width="120px">
+              <el-form-item label="联系方式规则">
+                <el-switch v-model="policySettings.hardRules.contactInfo.enabled" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-switch v-model="policySettings.hardRules.contactInfo.phone" />
+              </el-form-item>
+              <el-form-item label="微信">
+                <el-switch v-model="policySettings.hardRules.contactInfo.wechat" />
+              </el-form-item>
+              <el-form-item label="QQ">
+                <el-switch v-model="policySettings.hardRules.contactInfo.qq" />
+              </el-form-item>
+            </el-form>
+          </div>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -404,7 +413,7 @@ function decisionText(decision: ContentModerationDecision) {
 
 function ruleSourceText(ruleSource: ContentModerationRuleSource) {
   return {
-    hard_rule: "硬规则",
+    hard_rule: "内置规则",
     ai_model: "AI 模型",
     mixed: "混合"
   }[ruleSource];
@@ -558,6 +567,23 @@ function formatTime(value: string) {
   display: flex;
   flex-wrap: wrap;
   column-gap: 18px;
+}
+
+.hard-rule-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #dce5ea;
+}
+
+.hard-rule-section h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.hard-rule-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  column-gap: 16px;
 }
 
 .tag-gap {

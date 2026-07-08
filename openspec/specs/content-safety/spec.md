@@ -20,9 +20,9 @@ TBD - created by archiving change add-ai-content-safety. Update Purpose after ar
 - **AND** 返回结构化错误码 `CONTENT_BLOCKED`
 - **AND** 不得写入瓶子、会话或消息。
 
-### Requirement: 联系方式硬拦截
+### Requirement: 联系方式内置规则拦截
 
-系统 MUST 对明显微信、QQ、手机号联系方式执行硬规则识别，并按 `contact_info` 分类策略决定是否拦截。
+系统 MUST 对明显微信、QQ、手机号联系方式执行内置规则识别，并按 `contact_info` 分类策略决定是否拦截。
 
 #### Scenario: 内容包含手机号
 
@@ -35,8 +35,14 @@ TBD - created by archiving change add-ai-content-safety. Update Purpose after ar
 #### Scenario: 联系方式分类被关闭
 
 - **WHEN** 管理员关闭 `contact_info` 分类
-- **THEN** 联系方式硬规则 MUST 不再触发拦截
+- **THEN** 联系方式内置规则 MUST 不再触发拦截
 - **AND** 该行为 MUST 写入内容安全策略变更操作日志。
+
+#### Scenario: 管理员配置联系方式内置规则
+
+- **WHEN** 管理员在内容审核策略中关闭手机号、微信或 QQ 任一内置规则
+- **THEN** 后续审核 MUST 不再使用被关闭的内置规则识别联系方式
+- **AND** 配置变更 MUST 写入操作日志。
 
 ### Requirement: 内容审核独立模型
 
@@ -94,7 +100,8 @@ TBD - created by archiving change add-ai-content-safety. Update Purpose after ar
 - **WHEN** 系统参数中没有内容安全策略
 - **THEN** API MUST 写入并返回显式默认策略
 - **AND** 默认策略 MUST 包含 `contact_info`、`advertisement`、`sexual`、`abuse` 和 `illegal` 分类
-- **AND** 每个分类 MUST 有独立启用开关和拦截程度。
+- **AND** 每个分类 MUST 有独立启用开关和拦截程度
+- **AND** 默认策略 MUST 包含联系方式内置规则的总开关、手机号开关、微信开关和 QQ 开关。
 
 #### Scenario: 管理员关闭某个审核分类
 
@@ -144,7 +151,7 @@ TBD - created by archiving change add-ai-content-safety. Update Purpose after ar
 #### Scenario: 管理员查看内容安全策略
 
 - **WHEN** 管理员打开内容审核策略页面
-- **THEN** 页面 MUST 展示全局开关、分类开关、拦截程度和来源覆盖配置。
+- **THEN** 页面 MUST 展示全局开关、分类开关、拦截程度、来源覆盖配置和联系方式内置规则配置。
 
 #### Scenario: 管理员保存内容安全策略
 
@@ -168,4 +175,3 @@ TBD - created by archiving change add-ai-content-safety. Update Purpose after ar
 - **WHEN** 管理员查看旧版本内容审核事件
 - **THEN** API MUST 使用兼容摘要展示历史类别和原因
 - **AND** 不得伪造新策略字段为已执行的新链路结果。
-

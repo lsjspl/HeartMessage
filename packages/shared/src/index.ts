@@ -74,15 +74,13 @@ export type ContentModerationFinding = z.infer<typeof ContentModerationFindingSc
 
 export const ContentSafetyCategoryPolicySchema = z.object({
   enabled: z.boolean(),
-  blockAt: ContentModerationSeveritySchema,
-  hardRuleEnabled: z.boolean().optional()
+  blockAt: ContentModerationSeveritySchema
 });
 export type ContentSafetyCategoryPolicy = z.infer<typeof ContentSafetyCategoryPolicySchema>;
 
 export const ContentSafetyCategoryPolicyOverrideSchema = z.object({
   enabled: z.boolean().optional(),
-  blockAt: ContentModerationSeveritySchema.optional(),
-  hardRuleEnabled: z.boolean().optional()
+  blockAt: ContentModerationSeveritySchema.optional()
 });
 export type ContentSafetyCategoryPolicyOverride = z.infer<
   typeof ContentSafetyCategoryPolicyOverrideSchema
@@ -139,12 +137,28 @@ export const ContentSafetySourceOverridesSchema = z
   .default(EMPTY_CONTENT_SAFETY_SOURCE_OVERRIDES);
 export type ContentSafetySourceOverrides = z.infer<typeof ContentSafetySourceOverridesSchema>;
 
+export const ContentSafetyContactInfoHardRulesSchema = z.object({
+  enabled: z.boolean(),
+  phone: z.boolean(),
+  wechat: z.boolean(),
+  qq: z.boolean()
+});
+export type ContentSafetyContactInfoHardRules = z.infer<
+  typeof ContentSafetyContactInfoHardRulesSchema
+>;
+
+export const ContentSafetyHardRulesSchema = z.object({
+  contactInfo: ContentSafetyContactInfoHardRulesSchema
+});
+export type ContentSafetyHardRules = z.infer<typeof ContentSafetyHardRulesSchema>;
+
 export const ContentSafetySettingsSchema = z.object({
   enabled: z.boolean(),
   logAllowedFindings: z.boolean(),
   updatedAt: z.number().int().optional(),
   categories: ContentSafetyCategoryPoliciesSchema,
-  sourceOverrides: ContentSafetySourceOverridesSchema
+  sourceOverrides: ContentSafetySourceOverridesSchema,
+  hardRules: ContentSafetyHardRulesSchema
 });
 export type ContentSafetySettings = z.infer<typeof ContentSafetySettingsSchema>;
 
@@ -154,7 +168,6 @@ export const DEFAULT_CONTENT_SAFETY_SETTINGS: ContentSafetySettings = {
   categories: {
     contact_info: {
       enabled: true,
-      hardRuleEnabled: true,
       blockAt: "low"
     },
     advertisement: {
@@ -195,6 +208,14 @@ export const DEFAULT_CONTENT_SAFETY_SETTINGS: ContentSafetySettings = {
       sexual: { blockAt: "high" },
       abuse: { blockAt: "high" },
       illegal: {}
+    }
+  },
+  hardRules: {
+    contactInfo: {
+      enabled: true,
+      phone: true,
+      wechat: true,
+      qq: true
     }
   }
 };

@@ -89,12 +89,19 @@ function mergeSourceOverrides(input: unknown): Record<ContentModerationSource, C
 
 export function normalizeContentSafetySettings(input: unknown): ContentSafetySettings {
   const draft = asRecord(input);
+  const hardRules = asRecord(draft.hardRules);
 
   return ContentSafetySettingsSchema.parse({
     ...DEFAULT_CONTENT_SAFETY_SETTINGS,
     ...draft,
     categories: mergeCategoryPolicies(draft.categories),
-    sourceOverrides: mergeSourceOverrides(draft.sourceOverrides)
+    sourceOverrides: mergeSourceOverrides(draft.sourceOverrides),
+    hardRules: {
+      contactInfo: {
+        ...DEFAULT_CONTENT_SAFETY_SETTINGS.hardRules.contactInfo,
+        ...asRecord(hardRules.contactInfo)
+      }
+    }
   });
 }
 

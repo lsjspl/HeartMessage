@@ -217,6 +217,7 @@ export const adminRoutes = new Hono<{ Bindings: Env; Variables: Partial<AuthVari
         enabled: settings.enabled,
         logAllowedFindings: settings.logAllowedFindings,
         categoryCount: Object.keys(settings.categories).length,
+        hardRules: settings.hardRules,
         updatedAt: settings.updatedAt
       }
     });

@@ -95,18 +95,25 @@ function detectContactInfo(
   source: ContentModerationSource
 ): ContentModerationFinding[] {
   const policy = getEffectivePolicy(settings, source, "contact_info");
+  const hardRules = settings.hardRules.contactInfo;
 
-  if (!policy.enabled || policy.hardRuleEnabled === false) {
+  if (!policy.enabled || !hardRules.enabled) {
     return [];
   }
 
-  if (phonePattern.test(content) || wechatPattern.test(content) || qqPattern.test(content)) {
+  const matchedRules = [
+    hardRules.phone && phonePattern.test(content) ? "手机号" : undefined,
+    hardRules.wechat && wechatPattern.test(content) ? "微信" : undefined,
+    hardRules.qq && qqPattern.test(content) ? "QQ" : undefined
+  ].filter(Boolean);
+
+  if (matchedRules.length > 0) {
     return [
       {
         category: "contact_info",
         severity: "high",
         confidence: 1,
-        reason: "命中联系方式硬规则"
+        reason: `命中联系方式规则：${matchedRules.join("、")}`
       }
     ];
   }
